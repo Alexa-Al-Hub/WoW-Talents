@@ -5,7 +5,6 @@ using UnityEngine.UI;
 
 public class TalentNodeView : MonoBehaviour
 {
-    // [SerializeField] заставляет Unity показать эти приватные поля в Инспекторе
     [Header("UI Links")]
     [SerializeField] private Image _iconImage;
     [SerializeField] private TextMeshProUGUI _rankText;
