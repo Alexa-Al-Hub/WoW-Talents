@@ -10,6 +10,11 @@
 #
 # Get latest from https://github.com/github/gitignore/blob/main/Unity.gitignore
 #
+# IDE settings
+.vscode/
+.vs/
+.vsconfig
+
 .utmp/
 /[Ll]ibrary/
 /[Tt]emp/

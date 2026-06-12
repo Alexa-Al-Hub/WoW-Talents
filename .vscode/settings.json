@@ -1,7 +1,0 @@
-{
-    "editor.formatOnSave": true,
-    "dotnet.defaultSolution": "WoW Talents.slnx",
-    "editor.insertSpaces": true,
-    "editor.tabSize": 4,
-    "files.trimTrailingWhitespace": true
-}
