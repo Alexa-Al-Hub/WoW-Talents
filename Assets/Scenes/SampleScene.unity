@@ -496,11 +496,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 07b4a112cd112aa4ebf3e9bf524a3da9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TalentTreePresenter
-  _treeData: {fileID: 11400000, guid: 1517e620ee5f1a045bb9c937be13a0d0, type: 2}
+  _classData: {fileID: 11400000, guid: 4761a77cdd06ab44390bed65be886571, type: 2}
   _nodePrefab: {fileID: 1605897483403279424, guid: 3d1287e3be9972140b1cab8af9d38e2f, type: 3}
+  _arrowPrefab: {fileID: 38529066913045298, guid: 565ed35318b802342b17882904d3cfa3, type: 3}
   _container: {fileID: 176678771}
-  _cellSize: 64
-  _cellSpacing: 10
+  _cellSize: 65
+  _cellSpacing: 20
+  _treePadding: 10
+  _arrowWidth: 10
 --- !u!4 &1146178189
 Transform:
   m_ObjectHideFlags: 0

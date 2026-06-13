@@ -11,11 +11,11 @@ public class TalentNodeView : MonoBehaviour
     [SerializeField] private Button _button;
     [SerializeField] private Image _grayScaleOverlay;
 
-    [Header("Settings")]
-    [Tooltip("Unique talant Id")]
-    [SerializeField] private string _talentId;
+    private string _talentId;
+    private TalentDefinitionSO _assignedData;
 
     public string TalentId => _talentId;
+    public TalentDefinitionSO AssignedData => _assignedData;
 
     public event Action<string> OnTalentClicked;
 
@@ -24,31 +24,32 @@ public class TalentNodeView : MonoBehaviour
         _button.onClick.AddListener(HandleClick);
     }
 
+    public void Initialize(TalentDefinitionSO talentDef)
+    {
+        _assignedData = talentDef;
+        _talentId = talentDef.Id;
+        _iconImage.sprite = talentDef.Icon;
+    }
+
+    public void UpdateState(int currentRank, int maxRank, bool canInvest)
+    {
+        bool isMaxed  = currentRank >= maxRank;
+        bool isLocked = !canInvest && !isMaxed;
+
+        _rankText.text = $"{currentRank}/{maxRank}";
+        _button.interactable = canInvest;
+
+        if (_grayScaleOverlay != null) _grayScaleOverlay.enabled = isLocked;
+        _rankText.color = isLocked ? new Color(1f, 1f, 1f, 0.4f) : Color.white;
+    }
+
     private void HandleClick()
     {
         OnTalentClicked?.Invoke(_talentId);
     }
 
-    public void Initialize(TalentDefinitionSO talentDef, int currentRank)
-    {
-        _talentId = talentDef.Id;
-        _iconImage.sprite = talentDef.Icon;
-        UpdateState(currentRank, talentDef.MaxRank, isAvailable: true);
-    }
-
-    private void UpdateState(int currentRank, int maxRank, bool isAvailable)
-    {
-        _rankText.text = $"{currentRank}/{maxRank}";
-        _button.interactable = isAvailable;
-
-        if (_grayScaleOverlay != null)
-        {
-            _grayScaleOverlay.gameObject.SetActive(!isAvailable);
-        }
-    }
-
     private void OnDestroy()
     {
-        _button.onClick.RemoveAllListeners();
+        if (_button != null) _button.onClick.RemoveAllListeners();
     }
 }

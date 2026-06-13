@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3735e95fd7669314084dde2b776a3f2b, type: 3}
+  m_Name: FeralCombat
+  m_EditorClassIdentifier: Assembly-CSharp::TalentTreeSO
+  TreeName: Feral Combat
+  SpecIcon: {fileID: 0}
+  Nodes:
+  - Definition: {fileID: 11400000, guid: 45b471544efdfa94c9c4726dd539645f, type: 2}
+    Row: 0
+    Column: 1
+  - Definition: {fileID: 11400000, guid: ea09aaf328838154eb1a535f3eacc6ba, type: 2}
+    Row: 0
+    Column: 2
+  - Definition: {fileID: 11400000, guid: 2c9683ebb503a404a8a142f63601288a, type: 2}
+    Row: 1
+    Column: 0
+  - Definition: {fileID: 11400000, guid: aec0b17b2d3ee53458e7a4f3667a0c5f, type: 2}
+    Row: 1
+    Column: 1
+  - Definition: {fileID: 11400000, guid: 714227b8b2c524344b5f9de233d55af8, type: 2}
+    Row: 1
+    Column: 2
+  - Definition: {fileID: 11400000, guid: 3d3b5c68f4b5b2548b3b55df0cea58f3, type: 2}
+    Row: 1
+    Column: 3
+  - Definition: {fileID: 11400000, guid: 06adb2c0e16ccd046b4c98634e201854, type: 2}
+    Row: 1
+    Column: 4
