@@ -607,7 +607,6 @@ GameObject:
   - component: {fileID: 1796440609}
   - component: {fileID: 1796440608}
   - component: {fileID: 1796440607}
-  - component: {fileID: 1796440606}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -615,23 +614,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1796440606
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1796440605}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 07b4a112cd112aa4ebf3e9bf524a3da9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TalentTreePresenter
-  _treeData: {fileID: 0}
-  _nodePrefab: {fileID: 1605897483403279424, guid: 3d1287e3be9972140b1cab8af9d38e2f, type: 3}
-  _container: {fileID: 0}
-  _cellSize: 64
-  _cellSpacing: 10
 --- !u!114 &1796440607
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -5,6 +5,6 @@ using UnityEngine;
 public class TalentTreeSO : ScriptableObject
 {
     public string TreeName;
+    public Sprite SpecIcon;
     public List<TalentNodeData> Nodes;
-
 }

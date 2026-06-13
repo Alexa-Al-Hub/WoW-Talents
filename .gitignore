@@ -15,6 +15,13 @@
 .vs/
 .vsconfig
 
+# MCP settings
+.mcp.json
+ProjectSettings/McpUnitySettings.json
+
+# Unity package lock file (auto-generated)
+Packages/packages-lock.json
+
 .utmp/
 /[Ll]ibrary/
 /[Tt]emp/
