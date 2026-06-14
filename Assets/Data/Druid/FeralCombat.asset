@@ -31,8 +31,8 @@ MonoBehaviour:
     Row: 1
     Column: 2
   - Definition: {fileID: 11400000, guid: 3d3b5c68f4b5b2548b3b55df0cea58f3, type: 2}
-    Row: 1
-    Column: 3
+    Row: 2
+    Column: 2
   - Definition: {fileID: 11400000, guid: 06adb2c0e16ccd046b4c98634e201854, type: 2}
-    Row: 1
-    Column: 4
+    Row: 2
+    Column: 3

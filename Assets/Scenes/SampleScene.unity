@@ -498,12 +498,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TalentTreePresenter
   _classData: {fileID: 11400000, guid: 4761a77cdd06ab44390bed65be886571, type: 2}
   _nodePrefab: {fileID: 1605897483403279424, guid: 3d1287e3be9972140b1cab8af9d38e2f, type: 3}
-  _arrowPrefab: {fileID: 38529066913045298, guid: 565ed35318b802342b17882904d3cfa3, type: 3}
   _container: {fileID: 176678771}
-  _cellSize: 65
+  _cellSize: 64
   _cellSpacing: 20
-  _treePadding: 10
-  _arrowWidth: 10
+  _treePadding: 25
 --- !u!4 &1146178189
 Transform:
   m_ObjectHideFlags: 0

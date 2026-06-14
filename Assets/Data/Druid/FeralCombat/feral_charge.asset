@@ -19,4 +19,4 @@ MonoBehaviour:
   MaxRank: 1
   TreeId: FeralCombat
   RequiredTreePoints: 4
-  RequiredTalent: {fileID: 0}
+  RequiredTalent: {fileID: 11400000, guid: 714227b8b2c524344b5f9de233d55af8, type: 2}
