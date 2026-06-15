@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TalentTreeSO
   TreeName: Feral Combat
   SpecIcon: {fileID: 0}
-  BackgroundSprite: {fileID: 21300000, guid: f5c2ba9bdc488294a88e6e51760d2477, type: 3}
+  BackgroundPrefab: {fileID: 2527095427391677372, guid: 4d7bbb62f164d5449bd18416735d2bdb, type: 3}
   Nodes:
   - Definition: {fileID: 11400000, guid: 45b471544efdfa94c9c4726dd539645f, type: 2}
     X: 1

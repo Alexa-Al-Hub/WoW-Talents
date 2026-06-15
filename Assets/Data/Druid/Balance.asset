@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TalentTreeSO
   TreeName: Balance
   SpecIcon: {fileID: 0}
-  BackgroundSprite: {fileID: 21300000, guid: 2cc03aeb5a5a0b2459f8b68ac81a6b43, type: 3}
+  BackgroundPrefab: {fileID: 2527095427391677372, guid: 00c94ec3dabcfa04581f342ddc6a0dbf, type: 3}
   Nodes:
   - Definition: {fileID: 11400000, guid: 65e6723ce7259b7458718b846efa9692, type: 2}
     X: 0.35434082

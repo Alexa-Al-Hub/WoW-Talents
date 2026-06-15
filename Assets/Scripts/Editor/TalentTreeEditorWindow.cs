@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEditor;
 
 public class TalentTreeEditorWindow : EditorWindow
@@ -12,6 +13,7 @@ public class TalentTreeEditorWindow : EditorWindow
     private Vector2 _dragStartNodePos;
     private bool    _snapToGrid = true;
     private Vector2 _scroll;
+    private Vector2 _sidebarScroll;
 
     // Must match TalentTreePresenter serialized fields
     private const float RuntimeCellSize = 64f;
@@ -25,7 +27,7 @@ public class TalentTreeEditorWindow : EditorWindow
     // Preview panel size — set to (containerWidth / treeCount) × containerHeight from the game
     private Vector2 _panelSize = new Vector2(600f, 890f);
 
-    private const float InspectorH = 96f;
+    private const float SidebarWidth = 320f;
 
     private static readonly Color BgColor      = new Color(0.14f, 0.14f, 0.14f);
     private static readonly Color GridColor     = new Color(1f, 1f, 1f, 0.06f);
@@ -33,6 +35,7 @@ public class TalentTreeEditorWindow : EditorWindow
     private static readonly Color NodeColor     = new Color(0.22f, 0.22f, 0.22f);
     private static readonly Color SelectedColor = new Color(0.85f, 0.65f, 0.05f, 0.9f);
     private static readonly Color ShadowColor   = new Color(0f, 0f, 0f, 0.45f);
+    private static readonly Color SidebarColor  = new Color(0.18f, 0.18f, 0.18f);
 
     private static GUIStyle _labelStyle;
     private static GUIStyle LabelStyle => _labelStyle ??= new GUIStyle(EditorStyles.miniLabel)
@@ -73,14 +76,20 @@ public class TalentTreeEditorWindow : EditorWindow
     {
         DrawToolbar();
 
-        if (_tree == null)
-        {
-            EditorGUILayout.HelpBox("Select a TalentTreeSO asset in the Project window.", MessageType.Info);
-            return;
-        }
+        float toolbarHeight = EditorStyles.toolbar.fixedHeight;
+        float sidebarWidth  = Mathf.Clamp(SidebarWidth, 200f, position.width - 100f);
 
-        DrawCanvas();
-        DrawInspectorPanel();
+        Rect canvasRect  = new Rect(0f, toolbarHeight,
+                                    position.width - sidebarWidth, position.height - toolbarHeight);
+        Rect sidebarRect = new Rect(canvasRect.xMax, toolbarHeight,
+                                    sidebarWidth, position.height - toolbarHeight);
+
+        if (_tree != null)
+            DrawCanvas(canvasRect);
+        else
+            EditorGUI.LabelField(canvasRect, "Load a tree from the panel on the right →", EditorStyles.centeredGreyMiniLabel);
+
+        DrawSidebar(sidebarRect);
     }
 
     // ── Toolbar ───────────────────────────────────────────────────────────────
@@ -101,23 +110,22 @@ public class TalentTreeEditorWindow : EditorWindow
 
     // ── Canvas ────────────────────────────────────────────────────────────────
 
-    private void DrawCanvas()
+    private void DrawCanvas(Rect viewRect)
     {
-        float toolbarH    = EditorStyles.toolbar.fixedHeight;
-        float canvasViewH = position.height - toolbarH - InspectorH - 8f;
-
         (float scaledStep, float scaledCell) = ComputePreviewScale();
         float canvasW = Mathf.Max(_panelSize.x, 1f);
         float canvasH = Mathf.Max(_panelSize.y, 1f);
 
-        Rect viewRect = GUILayoutUtility.GetRect(position.width, canvasViewH);
+        bool mouseOverCanvas = viewRect.Contains(Event.current.mousePosition);
+
         _scroll = GUI.BeginScrollView(viewRect, _scroll, new Rect(0, 0, canvasW, canvasH));
 
         EditorGUI.DrawRect(new Rect(0, 0, canvasW, canvasH), BgColor);
 
-        if (_tree.BackgroundSprite != null)
+        var backgroundSprite = GetBackgroundSprite();
+        if (backgroundSprite != null)
         {
-            GUI.DrawTexture(new Rect(0, 0, canvasW, canvasH), _tree.BackgroundSprite.texture, ScaleMode.StretchToFill);
+            GUI.DrawTexture(new Rect(0, 0, canvasW, canvasH), backgroundSprite.texture, ScaleMode.StretchToFill);
             EditorGUI.DrawRect(new Rect(0, 0, canvasW, canvasH), BgDimOverlay);
         }
 
@@ -127,9 +135,21 @@ public class TalentTreeEditorWindow : EditorWindow
             for (int i = 0; i < _tree.Nodes.Count; i++)
                 DrawNode(i, scaledStep, scaledCell);
 
-        HandleCanvasEvents(scaledStep, scaledCell);
+        // Only the canvas consumes pointer input, so clicks in the sidebar don't deselect nodes.
+        if (mouseOverCanvas)
+            HandleCanvasEvents(scaledStep, scaledCell);
 
         GUI.EndScrollView();
+    }
+
+    // Pulls the preview sprite from the first Image found in the background prefab.
+    private Sprite GetBackgroundSprite()
+    {
+        if (_tree.BackgroundPrefab == null)
+            return null;
+
+        var backgroundImage = _tree.BackgroundPrefab.GetComponentInChildren<Image>(true);
+        return backgroundImage != null ? backgroundImage.sprite : null;
     }
 
     // Mirrors TalentTreePresenter.BuildTrees() scale so editor and game match exactly.
@@ -240,13 +260,62 @@ public class TalentTreeEditorWindow : EditorWindow
 
     // ── Inspector panel ───────────────────────────────────────────────────────
 
-    private void DrawInspectorPanel()
+    private void DrawSidebar(Rect sidebarRect)
     {
-        EditorGUILayout.Space(4);
+        EditorGUI.DrawRect(sidebarRect, SidebarColor);
+
+        GUILayout.BeginArea(new RectOffset(8, 8, 8, 8).Remove(sidebarRect));
+        _sidebarScroll = EditorGUILayout.BeginScrollView(_sidebarScroll);
+
+        DrawTreeLoader();
+        EditorGUILayout.Space(10);
+        DrawNodeProperties();
+
+        EditorGUILayout.EndScrollView();
+        GUILayout.EndArea();
+    }
+
+    private void DrawTreeLoader()
+    {
+        EditorGUILayout.LabelField("Tree", EditorStyles.boldLabel);
+
+        string currentLabel = _tree != null ? _tree.name : "(none selected)";
+        if (EditorGUILayout.DropdownButton(new GUIContent(currentLabel), FocusType.Keyboard))
+            ShowTreeMenu();
+    }
+
+    private void ShowTreeMenu()
+    {
+        var menu  = new GenericMenu();
+        var guids = AssetDatabase.FindAssets("t:TalentTreeSO");
+
+        if (guids.Length == 0)
+            menu.AddDisabledItem(new GUIContent("No TalentTreeSO assets found"));
+
+        foreach (string guid in guids)
+        {
+            string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+            var    tree      = AssetDatabase.LoadAssetAtPath<TalentTreeSO>(assetPath);
+            if (tree == null) continue;
+
+            menu.AddItem(new GUIContent(tree.name), tree == _tree, () => SetTree(tree));
+        }
+
+        menu.ShowAsContext();
+    }
+
+    private void DrawNodeProperties()
+    {
         EditorGUILayout.LabelField("Node Properties", EditorStyles.boldLabel);
 
         _panelSize = EditorGUILayout.Vector2Field("Panel size (W × H)", _panelSize);
         EditorGUILayout.Space(4);
+
+        if (_tree == null)
+        {
+            EditorGUILayout.HelpBox("Load a tree to edit its nodes.", MessageType.Info);
+            return;
+        }
 
         if (_selectedIdx < 0 || _tree.Nodes == null || _selectedIdx >= _tree.Nodes.Count)
         {

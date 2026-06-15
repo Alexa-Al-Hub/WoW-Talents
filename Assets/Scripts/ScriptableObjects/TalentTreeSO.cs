@@ -7,7 +7,7 @@ public class TalentTreeSO : ScriptableObject
     [Header("Main data")]
     public string TreeName;
     public Sprite SpecIcon;
-    public Sprite BackgroundSprite;
+    public GameObject BackgroundPrefab;
 
     public List<TalentNodeData> Nodes;
 }

@@ -27,6 +27,7 @@ public class TalentTreePresenter : MonoBehaviour
     [SerializeField] private float _cellSize = 64f;
     [SerializeField] private float _cellSpacing = 10f;
     [SerializeField] private float _containerPadding = 20f;
+    [SerializeField] private float _nodeTopPadding = 10f;
 
     private PlayerTalentManager _talentManager;
     private readonly List<TalentNodeView> _spawnedNodes = new();
@@ -40,8 +41,8 @@ public class TalentTreePresenter : MonoBehaviour
     {
         yield return null;
         yield return null;
-        var rootCanvasRT = _container.GetComponentInParent<Canvas>().rootCanvas.transform as RectTransform;
-        LayoutRebuilder.ForceRebuildLayoutImmediate(rootCanvasRT);
+        var rootCanvasRectTransform = _container.GetComponentInParent<Canvas>().rootCanvas.transform as RectTransform;
+        LayoutRebuilder.ForceRebuildLayoutImmediate(rootCanvasRectTransform);
         Canvas.ForceUpdateCanvases();
         Build();
     }
@@ -56,6 +57,9 @@ public class TalentTreePresenter : MonoBehaviour
             return;
 
         _talentManager = new PlayerTalentManager(51);
+
+        // Keep the trees container behind its siblings (Header, Tabs) so backgrounds render behind everything.
+        _container.SetAsFirstSibling();
 
         BuildTrees();
         BuildTabs();
@@ -96,14 +100,14 @@ public class TalentTreePresenter : MonoBehaviour
 
         float scaledStep      = step      * scale;
         float scaledCellSize  = _cellSize * scale;
-        float cursorX         = -containerWidth * 0.5f;
+        float columnLeftX     = -containerWidth * 0.5f;
 
-        foreach (var (tree, nodes, panelWidth, panelHeight) in layouts)
+        foreach (var (tree, nodes, _, _) in layouts)
         {
-            float scaledContentW = panelWidth  * scale;
-            float scaledContentH = panelHeight * scale;
-            var panel = SpawnPanel(tree, cursorX, containerHeight, scaledContentW, scaledContentH);
-            cursorX += equalPanelWidth;
+            // Every panel is the same full-column size, so the artist-anchored background
+            // lands in the same place for every tree regardless of node count.
+            var panel = SpawnPanel(tree, columnLeftX, equalPanelWidth, containerHeight);
+            columnLeftX += equalPanelWidth;
 
             foreach (var nodeData in nodes)
                 SpawnNode(nodeData, panel, scaledCellSize, scaledStep);
@@ -129,22 +133,22 @@ public class TalentTreePresenter : MonoBehaviour
         foreach (var tree in _classData.Trees)
         {
             if (tree == null || tree.Nodes == null) continue;
-            var nodes = tree.Nodes.Where(n => n != null).ToList();
+            var nodes = tree.Nodes.Where(node => node != null).ToList();
             if (nodes.Count == 0) continue;
-            float panelWidth  = nodes.Max(n => n.X) * step + _cellSize;
-            float panelHeight = nodes.Max(n => n.Y) * step + _cellSize;
+            float panelWidth  = nodes.Max(node => node.X) * step + _cellSize;
+            float panelHeight = nodes.Max(node => node.Y) * step + _cellSize;
             layouts.Add((tree, nodes, panelWidth, panelHeight));
         }
         return layouts;
     }
 
-    private RectTransform SpawnPanel(TalentTreeSO tree, float posX, float maxHeight, float contentW, float contentH)
+    private RectTransform SpawnPanel(TalentTreeSO tree, float panelLeftX, float panelWidth, float panelHeight)
     {
         RectTransform panelRectTransform;
         if (_treePanelPrefab != null)
         {
             var panelView = Instantiate(_treePanelPrefab, _container);
-            panelView.Initialize(tree.BackgroundSprite);
+            panelView.Initialize(tree.BackgroundPrefab);
             panelRectTransform = panelView.GetComponent<RectTransform>();
         }
         else
@@ -157,8 +161,8 @@ public class TalentTreePresenter : MonoBehaviour
         panelRectTransform.anchorMin        = new Vector2(0.5f, 0.5f);
         panelRectTransform.anchorMax        = new Vector2(0.5f, 0.5f);
         panelRectTransform.pivot            = new Vector2(0f, 1f);
-        panelRectTransform.sizeDelta        = new Vector2(contentW, contentH);
-        panelRectTransform.anchoredPosition = new Vector2(posX, maxHeight * 0.5f);
+        panelRectTransform.sizeDelta        = new Vector2(panelWidth, panelHeight);
+        panelRectTransform.anchoredPosition = new Vector2(panelLeftX, panelHeight * 0.5f);
         _spawnedPanels.Add(panelRectTransform.gameObject);
         return panelRectTransform;
     }
@@ -176,7 +180,7 @@ public class TalentTreePresenter : MonoBehaviour
         nodeRectTransform.anchorMax        = new Vector2(0f, 1f);
         nodeRectTransform.pivot            = new Vector2(0f, 1f);
         nodeRectTransform.sizeDelta        = new Vector2(cellSize, cellSize);
-        nodeRectTransform.anchoredPosition = new Vector2(nodeData.X * step, -(nodeData.Y * step));
+        nodeRectTransform.anchoredPosition = new Vector2(nodeData.X * step, -(nodeData.Y * step) - _nodeTopPadding);
 
         _spawnedNodes.Add(nodeView);
     }
@@ -220,7 +224,7 @@ public class TalentTreePresenter : MonoBehaviour
 
     private int GetPointsInTree(TalentTreeSO tree)
     {
-        var firstValidNode = tree.Nodes?.FirstOrDefault(n => n?.Definition != null);
+        var firstValidNode = tree.Nodes?.FirstOrDefault(node => node?.Definition != null);
         if (firstValidNode == null) return 0;
         return _talentManager.GetPointsInTree(firstValidNode.Definition.TreeId);
     }
@@ -229,7 +233,7 @@ public class TalentTreePresenter : MonoBehaviour
     {
         foreach (var tree in _classData.Trees)
         {
-            var node = tree.Nodes.FirstOrDefault(n => n.Definition.Id == talentId);
+            var node = tree.Nodes.FirstOrDefault(candidate => candidate.Definition.Id == talentId);
             if (node == null) continue;
 
             if (_talentManager.TryInvestPoint(node.Definition))

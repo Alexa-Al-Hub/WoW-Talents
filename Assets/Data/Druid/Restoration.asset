@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TalentTreeSO
   TreeName: Restoration
   SpecIcon: {fileID: 0}
-  BackgroundSprite: {fileID: 21300000, guid: 1975fa38fe6d4bc4ca778b9dbd32d3a5, type: 3}
+  BackgroundPrefab: {fileID: 2527095427391677372, guid: 66d2e72cb3130b8489660cc7120f2d95, type: 3}
   Nodes:
   - Definition: {fileID: 11400000, guid: ba44fbc461aaf6e4591db49d60732b08, type: 2}
     X: 1

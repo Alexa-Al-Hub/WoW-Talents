@@ -1,13 +1,18 @@
 using UnityEngine;
-using UnityEngine.UI;
 
 public class TreePanelView : MonoBehaviour
 {
-    [SerializeField] private Image _backgroundImage;
+    [SerializeField] private RectTransform _backgroundContainer;
 
-    public void Initialize(Sprite backgroundSprite)
+    // Spawns the background prefab as-is — the artist owns its size, scale and anchoring.
+    // Code only puts it behind the nodes; it never touches the prefab's transform.
+    public void Initialize(GameObject backgroundPrefab)
     {
-        if (_backgroundImage != null)
-            _backgroundImage.sprite = backgroundSprite;
+        if (backgroundPrefab == null)
+            return;
+
+        var backgroundParent   = _backgroundContainer != null ? _backgroundContainer : (RectTransform)transform;
+        var backgroundInstance = Instantiate(backgroundPrefab, backgroundParent, false);
+        backgroundInstance.transform.SetAsFirstSibling();   // render behind the nodes
     }
 }
