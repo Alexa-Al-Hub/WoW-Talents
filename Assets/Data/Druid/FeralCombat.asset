@@ -14,25 +14,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TalentTreeSO
   TreeName: Feral Combat
   SpecIcon: {fileID: 0}
+  BackgroundSprite: {fileID: 21300000, guid: f5c2ba9bdc488294a88e6e51760d2477, type: 3}
   Nodes:
   - Definition: {fileID: 11400000, guid: 45b471544efdfa94c9c4726dd539645f, type: 2}
-    Row: 0
-    Column: 1
+    X: 1
+    Y: 0
   - Definition: {fileID: 11400000, guid: ea09aaf328838154eb1a535f3eacc6ba, type: 2}
-    Row: 0
-    Column: 2
+    X: 3.0046847
+    Y: 0.019699736
   - Definition: {fileID: 11400000, guid: 2c9683ebb503a404a8a142f63601288a, type: 2}
-    Row: 1
-    Column: 0
+    X: 1.0637838
+    Y: 2.034234
   - Definition: {fileID: 11400000, guid: aec0b17b2d3ee53458e7a4f3667a0c5f, type: 2}
-    Row: 1
-    Column: 1
+    X: 2.0145345
+    Y: 1.0196998
   - Definition: {fileID: 11400000, guid: 714227b8b2c524344b5f9de233d55af8, type: 2}
-    Row: 1
-    Column: 2
+    X: 4.103173
+    Y: 1.0485315
   - Definition: {fileID: 11400000, guid: 3d3b5c68f4b5b2548b3b55df0cea58f3, type: 2}
-    Row: 2
-    Column: 2
+    X: 2.068949
+    Y: 3.0736334
   - Definition: {fileID: 11400000, guid: 06adb2c0e16ccd046b4c98634e201854, type: 2}
-    Row: 2
-    Column: 3
+    X: 5.9452915
+    Y: 0.4709908

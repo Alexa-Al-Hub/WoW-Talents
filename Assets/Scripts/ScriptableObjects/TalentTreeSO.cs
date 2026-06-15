@@ -5,9 +5,9 @@ using UnityEngine;
 public class TalentTreeSO : ScriptableObject
 {
     [Header("Main data")]
-    public string     TreeName;
-    public Sprite     SpecIcon;
-    public GameObject TreePanelPrefab;
+    public string TreeName;
+    public Sprite SpecIcon;
+    public Sprite BackgroundSprite;
 
     public List<TalentNodeData> Nodes;
 }

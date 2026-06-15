@@ -6,26 +6,33 @@ public class TalentTreeEditorWindow : EditorWindow
 {
     private TalentTreeSO _tree;
 
-    private int     _selectedIdx     = -1;
+    private int     _selectedIdx      = -1;
     private bool    _isDragging;
     private Vector2 _dragStartMouse;
     private Vector2 _dragStartNodePos;
     private bool    _snapToGrid = true;
     private Vector2 _scroll;
 
-    private const float CELL = 72f;
-    private const float GAP  = 14f;
-    private const float STEP = CELL + GAP;
-    private const int   COLS = 8;
-    private const int   ROWS = 10;
+    // Must match TalentTreePresenter serialized fields
+    private const float RuntimeCellSize = 64f;
+    private const float RuntimeSpacing  = 10f;
+    private const float RuntimeStep     = RuntimeCellSize + RuntimeSpacing;
+
+    // Max grid extent used only for drag clamping
+    private const int MaxCols = 8;
+    private const int MaxRows = 11;
+
+    // Preview panel size — set to (containerWidth / treeCount) × containerHeight from the game
+    private Vector2 _panelSize = new Vector2(600f, 890f);
 
     private const float InspectorH = 96f;
 
-    private static readonly Color BgColor       = new Color(0.14f, 0.14f, 0.14f);
-    private static readonly Color GridColor      = new Color(1f, 1f, 1f, 0.06f);
-    private static readonly Color NodeColor      = new Color(0.22f, 0.22f, 0.22f);
-    private static readonly Color SelectedColor  = new Color(0.85f, 0.65f, 0.05f, 0.9f);
-    private static readonly Color ShadowColor    = new Color(0f, 0f, 0f, 0.45f);
+    private static readonly Color BgColor      = new Color(0.14f, 0.14f, 0.14f);
+    private static readonly Color GridColor     = new Color(1f, 1f, 1f, 0.06f);
+    private static readonly Color BgDimOverlay  = new Color(0f, 0f, 0f, 0.4f);
+    private static readonly Color NodeColor     = new Color(0.22f, 0.22f, 0.22f);
+    private static readonly Color SelectedColor = new Color(0.85f, 0.65f, 0.05f, 0.9f);
+    private static readonly Color ShadowColor   = new Color(0f, 0f, 0f, 0.45f);
 
     private static GUIStyle _labelStyle;
     private static GUIStyle LabelStyle => _labelStyle ??= new GUIStyle(EditorStyles.miniLabel)
@@ -35,22 +42,22 @@ public class TalentTreeEditorWindow : EditorWindow
         normal    = { textColor = Color.white }
     };
 
-    // ── Open ─────────────────────────────────────────────────────────────────────
+    // ── Open ──────────────────────────────────────────────────────────────────
 
     [MenuItem("WoW Talents/Talent Tree Editor")]
     public static void Open() => GetWindow<TalentTreeEditorWindow>("Talent Tree Editor");
 
     public static void OpenWith(TalentTreeSO tree)
     {
-        var w = GetWindow<TalentTreeEditorWindow>("Talent Tree Editor");
-        w.SetTree(tree);
+        var window = GetWindow<TalentTreeEditorWindow>("Talent Tree Editor");
+        window.SetTree(tree);
     }
 
-    // ── Unity callbacks ───────────────────────────────────────────────────────────
+    // ── Unity callbacks ───────────────────────────────────────────────────────
 
     private void OnSelectionChange()
     {
-        if (Selection.activeObject is TalentTreeSO t) SetTree(t);
+        if (Selection.activeObject is TalentTreeSO selectedTree) SetTree(selectedTree);
     }
 
     private void SetTree(TalentTreeSO tree)
@@ -60,7 +67,7 @@ public class TalentTreeEditorWindow : EditorWindow
         Repaint();
     }
 
-    // ── OnGUI ────────────────────────────────────────────────────────────────────
+    // ── OnGUI ─────────────────────────────────────────────────────────────────
 
     private void OnGUI()
     {
@@ -76,7 +83,7 @@ public class TalentTreeEditorWindow : EditorWindow
         DrawInspectorPanel();
     }
 
-    // ── Toolbar ──────────────────────────────────────────────────────────────────
+    // ── Toolbar ───────────────────────────────────────────────────────────────
 
     private void DrawToolbar()
     {
@@ -92,125 +99,154 @@ public class TalentTreeEditorWindow : EditorWindow
         }
     }
 
-    // ── Canvas ───────────────────────────────────────────────────────────────────
+    // ── Canvas ────────────────────────────────────────────────────────────────
 
     private void DrawCanvas()
     {
         float toolbarH    = EditorStyles.toolbar.fixedHeight;
         float canvasViewH = position.height - toolbarH - InspectorH - 8f;
 
-        float canvasW = COLS * STEP + GAP;
-        float canvasH = ROWS * STEP + GAP;
+        (float scaledStep, float scaledCell) = ComputePreviewScale();
+        float canvasW = Mathf.Max(_panelSize.x, 1f);
+        float canvasH = Mathf.Max(_panelSize.y, 1f);
 
         Rect viewRect = GUILayoutUtility.GetRect(position.width, canvasViewH);
-
         _scroll = GUI.BeginScrollView(viewRect, _scroll, new Rect(0, 0, canvasW, canvasH));
 
         EditorGUI.DrawRect(new Rect(0, 0, canvasW, canvasH), BgColor);
-        DrawGridLines(canvasW, canvasH);
+
+        if (_tree.BackgroundSprite != null)
+        {
+            GUI.DrawTexture(new Rect(0, 0, canvasW, canvasH), _tree.BackgroundSprite.texture, ScaleMode.StretchToFill);
+            EditorGUI.DrawRect(new Rect(0, 0, canvasW, canvasH), BgDimOverlay);
+        }
+
+        DrawGridLines(canvasW, canvasH, scaledStep);
 
         if (_tree.Nodes != null)
             for (int i = 0; i < _tree.Nodes.Count; i++)
-                DrawNode(i);
+                DrawNode(i, scaledStep, scaledCell);
 
-        HandleCanvasEvents();
+        HandleCanvasEvents(scaledStep, scaledCell);
 
         GUI.EndScrollView();
     }
 
-    private void DrawGridLines(float canvasW, float canvasH)
+    // Mirrors TalentTreePresenter.BuildTrees() scale so editor and game match exactly.
+    private (float scaledStep, float scaledCell) ComputePreviewScale()
     {
-        for (int c = 0; c <= COLS; c++)
-        {
-            float x = GAP * 0.5f + c * STEP - 0.5f;
-            EditorGUI.DrawRect(new Rect(x, 0, 1, canvasH), GridColor);
-        }
-        for (int r = 0; r <= ROWS; r++)
-        {
-            float y = GAP * 0.5f + r * STEP - 0.5f;
-            EditorGUI.DrawRect(new Rect(0, y, canvasW, 1), GridColor);
-        }
+        float maxNodeX = 0f, maxNodeY = 0f;
+        if (_tree.Nodes != null)
+            foreach (var node in _tree.Nodes)
+            {
+                if (node == null) continue;
+                maxNodeX = Mathf.Max(maxNodeX, node.X);
+                maxNodeY = Mathf.Max(maxNodeY, node.Y);
+            }
+
+        float contentWidth  = maxNodeX * RuntimeStep + RuntimeCellSize;
+        float contentHeight = maxNodeY * RuntimeStep + RuntimeCellSize;
+
+        if (contentWidth <= 0f || contentHeight <= 0f)
+            return (RuntimeStep, RuntimeCellSize);
+
+        float panelW = Mathf.Max(_panelSize.x, 1f);
+        float panelH = Mathf.Max(_panelSize.y, 1f);
+
+        float scale = Mathf.Min(panelW / contentWidth, panelH / contentHeight);
+        return (RuntimeStep * scale, RuntimeCellSize * scale);
     }
 
-    private void DrawNode(int idx)
+    private void DrawGridLines(float canvasW, float canvasH, float scaledStep)
+    {
+        for (float x = 0; x < canvasW; x += scaledStep)
+            EditorGUI.DrawRect(new Rect(x, 0, 1, canvasH), GridColor);
+        for (float y = 0; y < canvasH; y += scaledStep)
+            EditorGUI.DrawRect(new Rect(0, y, canvasW, 1), GridColor);
+    }
+
+    private void DrawNode(int idx, float scaledStep, float scaledCell)
     {
         var node = _tree.Nodes[idx];
         if (node == null) return;
 
-        Rect r   = NodeRect(node.X, node.Y);
-        bool sel = idx == _selectedIdx;
+        Rect nodeRect = NodeRect(node.X, node.Y, scaledStep, scaledCell);
+        bool selected = idx == _selectedIdx;
 
-        EditorGUI.DrawRect(new Rect(r.x + 2, r.y + 2, r.width, r.height), ShadowColor);
-        EditorGUI.DrawRect(r, sel ? SelectedColor : NodeColor);
+        EditorGUI.DrawRect(new Rect(nodeRect.x + 2, nodeRect.y + 2, nodeRect.width, nodeRect.height), ShadowColor);
+        EditorGUI.DrawRect(nodeRect, selected ? SelectedColor : NodeColor);
 
         var icon = node.Definition?.Icon;
         if (icon != null)
-            GUI.DrawTexture(new Rect(r.x + 4, r.y + 4, r.width - 8, r.height - 20),
+            GUI.DrawTexture(new Rect(nodeRect.x + 4, nodeRect.y + 4, nodeRect.width - 8, nodeRect.height - 20),
                             icon.texture, ScaleMode.ScaleToFit);
 
         string label = node.Definition ? node.Definition.DisplayName : "(empty)";
-        GUI.Label(new Rect(r.x, r.yMax - 18, r.width, 18), label, LabelStyle);
+        GUI.Label(new Rect(nodeRect.x, nodeRect.yMax - 18, nodeRect.width, 18), label, LabelStyle);
     }
 
-    // ── Events ───────────────────────────────────────────────────────────────────
+    // ── Events ────────────────────────────────────────────────────────────────
 
-    private void HandleCanvasEvents()
+    private void HandleCanvasEvents(float scaledStep, float scaledCell)
     {
-        Event e = Event.current;
-        if (e == null) return;
+        Event currentEvent = Event.current;
+        if (currentEvent == null) return;
 
-        switch (e.type)
+        switch (currentEvent.type)
         {
-            case EventType.MouseDown when e.button == 0:
+            case EventType.MouseDown when currentEvent.button == 0:
             {
-                int hit = NodeAt(e.mousePosition);
+                int hit = NodeAt(currentEvent.mousePosition, scaledStep, scaledCell);
                 _selectedIdx = hit;
                 if (hit >= 0)
                 {
                     _isDragging       = true;
-                    _dragStartMouse   = e.mousePosition;
+                    _dragStartMouse   = currentEvent.mousePosition;
                     _dragStartNodePos = new Vector2(_tree.Nodes[hit].X, _tree.Nodes[hit].Y);
                 }
                 Repaint();
-                e.Use();
+                currentEvent.Use();
                 break;
             }
 
             case EventType.MouseDrag when _isDragging && _selectedIdx >= 0:
             {
-                Vector2 delta = e.mousePosition - _dragStartMouse;
-                float newX = _dragStartNodePos.x + delta.x / STEP;
-                float newY = _dragStartNodePos.y + delta.y / STEP;
+                Vector2 delta = currentEvent.mousePosition - _dragStartMouse;
+                float newX = _dragStartNodePos.x + delta.x / scaledStep;
+                float newY = _dragStartNodePos.y + delta.y / scaledStep;
                 if (_snapToGrid) { newX = Mathf.Round(newX); newY = Mathf.Round(newY); }
-                newX = Mathf.Clamp(newX, 0, COLS - 1);
-                newY = Mathf.Clamp(newY, 0, ROWS - 1);
+                newX = Mathf.Clamp(newX, 0, MaxCols - 1);
+                newY = Mathf.Clamp(newY, 0, MaxRows - 1);
                 Undo.RecordObject(_tree, "Move Talent Node");
                 _tree.Nodes[_selectedIdx].X = newX;
                 _tree.Nodes[_selectedIdx].Y = newY;
                 EditorUtility.SetDirty(_tree);
                 Repaint();
-                e.Use();
+                currentEvent.Use();
                 break;
             }
 
-            case EventType.MouseUp when e.button == 0:
+            case EventType.MouseUp when currentEvent.button == 0:
                 _isDragging = false;
-                e.Use();
+                currentEvent.Use();
                 break;
 
-            case EventType.KeyDown when e.keyCode == KeyCode.Delete && _selectedIdx >= 0:
+            case EventType.KeyDown when currentEvent.keyCode == KeyCode.Delete && _selectedIdx >= 0:
                 RemoveSelected();
-                e.Use();
+                currentEvent.Use();
                 break;
         }
     }
 
-    // ── Inspector panel ───────────────────────────────────────────────────────────
+    // ── Inspector panel ───────────────────────────────────────────────────────
 
     private void DrawInspectorPanel()
     {
         EditorGUILayout.Space(4);
         EditorGUILayout.LabelField("Node Properties", EditorStyles.boldLabel);
+
+        _panelSize = EditorGUILayout.Vector2Field("Panel size (W × H)", _panelSize);
+        EditorGUILayout.Space(4);
 
         if (_selectedIdx < 0 || _tree.Nodes == null || _selectedIdx >= _tree.Nodes.Count)
         {
@@ -222,7 +258,7 @@ public class TalentTreeEditorWindow : EditorWindow
 
         EditorGUI.BeginChangeCheck();
 
-        var newDef = (TalentDefinitionSO)EditorGUILayout.ObjectField(
+        var newDefinition = (TalentDefinitionSO)EditorGUILayout.ObjectField(
             "Talent", node.Definition, typeof(TalentDefinitionSO), false);
 
         float newX = EditorGUILayout.FloatField("X (col)", node.X);
@@ -231,7 +267,7 @@ public class TalentTreeEditorWindow : EditorWindow
         if (EditorGUI.EndChangeCheck())
         {
             Undo.RecordObject(_tree, "Edit Talent Node");
-            node.Definition = newDef;
+            node.Definition = newDefinition;
             node.X = _snapToGrid ? Mathf.Round(newX) : newX;
             node.Y = _snapToGrid ? Mathf.Round(newY) : newY;
             EditorUtility.SetDirty(_tree);
@@ -239,18 +275,18 @@ public class TalentTreeEditorWindow : EditorWindow
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private Rect NodeRect(float x, float y) =>
-        new Rect(GAP * 0.5f + x * STEP, GAP * 0.5f + y * STEP, CELL, CELL);
+    private static Rect NodeRect(float x, float y, float scaledStep, float scaledCell) =>
+        new Rect(x * scaledStep, y * scaledStep, scaledCell, scaledCell);
 
-    private int NodeAt(Vector2 pos)
+    private int NodeAt(Vector2 pos, float scaledStep, float scaledCell)
     {
         if (_tree.Nodes == null) return -1;
         for (int i = _tree.Nodes.Count - 1; i >= 0; i--)
         {
-            var n = _tree.Nodes[i];
-            if (n != null && NodeRect(n.X, n.Y).Contains(pos)) return i;
+            var node = _tree.Nodes[i];
+            if (node != null && NodeRect(node.X, node.Y, scaledStep, scaledCell).Contains(pos)) return i;
         }
         return -1;
     }
@@ -277,7 +313,7 @@ public class TalentTreeEditorWindow : EditorWindow
     }
 }
 
-// ── Custom Inspector button ───────────────────────────────────────────────────────
+// ── Custom Inspector button ───────────────────────────────────────────────────
 
 [CustomEditor(typeof(TalentTreeSO))]
 public class TalentTreeSOEditor : Editor

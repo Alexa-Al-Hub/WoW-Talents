@@ -14,19 +14,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TalentTreeSO
   TreeName: Balance
   SpecIcon: {fileID: 0}
+  BackgroundSprite: {fileID: 21300000, guid: 2cc03aeb5a5a0b2459f8b68ac81a6b43, type: 3}
   Nodes:
   - Definition: {fileID: 11400000, guid: 65e6723ce7259b7458718b846efa9692, type: 2}
-    Row: 0
-    Column: 0
+    X: 0.35434082
+    Y: 0.14818737
   - Definition: {fileID: 11400000, guid: f98eb08dd7e55a246b54d3209ecdaaa9, type: 2}
-    Row: 0
-    Column: 1
+    X: 2.9302323
+    Y: 0.23255804
   - Definition: {fileID: 11400000, guid: e5d981eb4eecad941b5f57162bd53504, type: 2}
-    Row: 0
-    Column: 2
+    X: 4.984257
+    Y: 1.0937595
   - Definition: {fileID: 11400000, guid: 9ea105a14bc552e46ba7305c9f64d380, type: 2}
-    Row: 1
-    Column: 0
+    X: 1.0754215
+    Y: 2.075717
   - Definition: {fileID: 11400000, guid: 35d4d168432877a4b83aed5be88c5044, type: 2}
-    Row: 1
-    Column: 1
+    X: 4.05039
+    Y: 3.0708148
+  - Definition: {fileID: 11400000, guid: be4d451141625044593cfe0af59f12a4, type: 2}
+    X: 7
+    Y: 2.087143
+  - Definition: {fileID: 11400000, guid: 570d32a574f056842958b31b2df4af9f, type: 2}
+    X: 2.067817
+    Y: 3.0779092

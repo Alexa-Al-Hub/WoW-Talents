@@ -14,13 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TalentTreeSO
   TreeName: Restoration
   SpecIcon: {fileID: 0}
+  BackgroundSprite: {fileID: 21300000, guid: 1975fa38fe6d4bc4ca778b9dbd32d3a5, type: 3}
   Nodes:
   - Definition: {fileID: 11400000, guid: ba44fbc461aaf6e4591db49d60732b08, type: 2}
-    Row: 0
-    Column: 1
+    X: 1
+    Y: 0
   - Definition: {fileID: 11400000, guid: bddf9d8c610fa9c408331e63b9c8d774, type: 2}
-    Row: 0
-    Column: 2
+    X: 2
+    Y: 0
   - Definition: {fileID: 11400000, guid: 3562a30c3d17b9c44a8117178032f03d, type: 2}
-    Row: 1
-    Column: 0
+    X: 0
+    Y: 1
