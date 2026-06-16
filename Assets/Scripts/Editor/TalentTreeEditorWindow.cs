@@ -12,7 +12,6 @@ public class TalentTreeEditorWindow : EditorWindow
     private Vector2 _dragStartMouse;
     private Vector2 _dragStartNodePos;
     private bool    _snapToGrid = true;
-    private Vector2 _scroll;
     private Vector2 _sidebarScroll;
 
     // Must match TalentTreePresenter serialized fields
@@ -20,14 +19,11 @@ public class TalentTreeEditorWindow : EditorWindow
     private const float RuntimeSpacing  = 10f;
     private const float RuntimeStep     = RuntimeCellSize + RuntimeSpacing;
 
-    // Max grid extent used only for drag clamping
-    private const int MaxCols = 8;
-    private const int MaxRows = 11;
+    // Grid extent of the tree. WoW Classic trees are 4 columns wide; rows vary by tree.
+    private int _columns = 4;
+    private int _rows     = 7;
 
-    // Preview panel size — set to (containerWidth / treeCount) × containerHeight from the game
-    private Vector2 _panelSize = new Vector2(600f, 890f);
-
-    private const float SidebarWidth = 320f;
+    private const float PanelHeight = 190f;
 
     private static readonly Color BgColor      = new Color(0.14f, 0.14f, 0.14f);
     private static readonly Color GridColor     = new Color(1f, 1f, 1f, 0.06f);
@@ -77,19 +73,19 @@ public class TalentTreeEditorWindow : EditorWindow
         DrawToolbar();
 
         float toolbarHeight = EditorStyles.toolbar.fixedHeight;
-        float sidebarWidth  = Mathf.Clamp(SidebarWidth, 200f, position.width - 100f);
+        float panelHeight   = Mathf.Clamp(PanelHeight, 120f, position.height - toolbarHeight - 80f);
 
-        Rect canvasRect  = new Rect(0f, toolbarHeight,
-                                    position.width - sidebarWidth, position.height - toolbarHeight);
-        Rect sidebarRect = new Rect(canvasRect.xMax, toolbarHeight,
-                                    sidebarWidth, position.height - toolbarHeight);
+        Rect canvasRect = new Rect(0f, toolbarHeight,
+                                   position.width, position.height - toolbarHeight - panelHeight);
+        Rect panelRect  = new Rect(0f, canvasRect.yMax,
+                                   position.width, panelHeight);
 
         if (_tree != null)
             DrawCanvas(canvasRect);
         else
-            EditorGUI.LabelField(canvasRect, "Load a tree from the panel on the right →", EditorStyles.centeredGreyMiniLabel);
+            EditorGUI.LabelField(canvasRect, "Load a tree from the panel below ↓", EditorStyles.centeredGreyMiniLabel);
 
-        DrawSidebar(sidebarRect);
+        DrawSidebar(panelRect);
     }
 
     // ── Toolbar ───────────────────────────────────────────────────────────────
@@ -112,13 +108,26 @@ public class TalentTreeEditorWindow : EditorWindow
 
     private void DrawCanvas(Rect viewRect)
     {
-        (float scaledStep, float scaledCell) = ComputePreviewScale();
-        float canvasW = Mathf.Max(_panelSize.x, 1f);
-        float canvasH = Mathf.Max(_panelSize.y, 1f);
+        float scaledStep = RuntimeStep;
+        float scaledCell = RuntimeCellSize;
 
-        bool mouseOverCanvas = viewRect.Contains(Event.current.mousePosition);
+        // Canvas spans the full column × row grid, in runtime units.
+        float canvasW = Mathf.Max(_columns, 1) * RuntimeStep;
+        float canvasH = Mathf.Max(_rows, 1)    * RuntimeStep;
 
-        _scroll = GUI.BeginScrollView(viewRect, _scroll, new Rect(0, 0, canvasW, canvasH));
+        // Shrink the whole preview so the entire grid — and every node — fits the view
+        // without scrolling. Uniform scale keeps the grid's aspect ratio.
+        float fitScale = Mathf.Min(viewRect.width / canvasW, viewRect.height / canvasH);
+        canvasW    *= fitScale;
+        canvasH    *= fitScale;
+        scaledStep *= fitScale;
+        scaledCell *= fitScale;
+
+        // Computed in window space, before BeginGroup re-bases the mouse to group-local coords.
+        bool mouseOverCanvas = new Rect(viewRect.x, viewRect.y, canvasW, canvasH)
+            .Contains(Event.current.mousePosition);
+
+        GUI.BeginGroup(viewRect);
 
         EditorGUI.DrawRect(new Rect(0, 0, canvasW, canvasH), BgColor);
 
@@ -135,11 +144,11 @@ public class TalentTreeEditorWindow : EditorWindow
             for (int i = 0; i < _tree.Nodes.Count; i++)
                 DrawNode(i, scaledStep, scaledCell);
 
-        // Only the canvas consumes pointer input, so clicks in the sidebar don't deselect nodes.
+        // Only the canvas consumes pointer input, so clicks in the panel don't deselect nodes.
         if (mouseOverCanvas)
             HandleCanvasEvents(scaledStep, scaledCell);
 
-        GUI.EndScrollView();
+        GUI.EndGroup();
     }
 
     // Pulls the preview sprite from the first Image found in the background prefab.
@@ -150,31 +159,6 @@ public class TalentTreeEditorWindow : EditorWindow
 
         var backgroundImage = _tree.BackgroundPrefab.GetComponentInChildren<Image>(true);
         return backgroundImage != null ? backgroundImage.sprite : null;
-    }
-
-    // Mirrors TalentTreePresenter.BuildTrees() scale so editor and game match exactly.
-    private (float scaledStep, float scaledCell) ComputePreviewScale()
-    {
-        float maxNodeX = 0f, maxNodeY = 0f;
-        if (_tree.Nodes != null)
-            foreach (var node in _tree.Nodes)
-            {
-                if (node == null) continue;
-                maxNodeX = Mathf.Max(maxNodeX, node.X);
-                maxNodeY = Mathf.Max(maxNodeY, node.Y);
-            }
-
-        float contentWidth  = maxNodeX * RuntimeStep + RuntimeCellSize;
-        float contentHeight = maxNodeY * RuntimeStep + RuntimeCellSize;
-
-        if (contentWidth <= 0f || contentHeight <= 0f)
-            return (RuntimeStep, RuntimeCellSize);
-
-        float panelW = Mathf.Max(_panelSize.x, 1f);
-        float panelH = Mathf.Max(_panelSize.y, 1f);
-
-        float scale = Mathf.Min(panelW / contentWidth, panelH / contentHeight);
-        return (RuntimeStep * scale, RuntimeCellSize * scale);
     }
 
     private void DrawGridLines(float canvasW, float canvasH, float scaledStep)
@@ -235,8 +219,8 @@ public class TalentTreeEditorWindow : EditorWindow
                 float newX = _dragStartNodePos.x + delta.x / scaledStep;
                 float newY = _dragStartNodePos.y + delta.y / scaledStep;
                 if (_snapToGrid) { newX = Mathf.Round(newX); newY = Mathf.Round(newY); }
-                newX = Mathf.Clamp(newX, 0, MaxCols - 1);
-                newY = Mathf.Clamp(newY, 0, MaxRows - 1);
+                newX = Mathf.Clamp(newX, 0, _columns - 1);
+                newY = Mathf.Clamp(newY, 0, _rows - 1);
                 Undo.RecordObject(_tree, "Move Talent Node");
                 _tree.Nodes[_selectedIdx].X = newX;
                 _tree.Nodes[_selectedIdx].Y = newY;
@@ -260,18 +244,16 @@ public class TalentTreeEditorWindow : EditorWindow
 
     // ── Inspector panel ───────────────────────────────────────────────────────
 
-    private void DrawSidebar(Rect sidebarRect)
+    private void DrawSidebar(Rect panelRect)
     {
-        EditorGUI.DrawRect(sidebarRect, SidebarColor);
+        EditorGUI.DrawRect(panelRect, SidebarColor);
 
-        GUILayout.BeginArea(new RectOffset(8, 8, 8, 8).Remove(sidebarRect));
+        GUILayout.BeginArea(new RectOffset(8, 8, 8, 8).Remove(panelRect));
+
         _sidebarScroll = EditorGUILayout.BeginScrollView(_sidebarScroll);
-
-        DrawTreeLoader();
-        EditorGUILayout.Space(10);
         DrawNodeProperties();
-
         EditorGUILayout.EndScrollView();
+
         GUILayout.EndArea();
     }
 
@@ -306,9 +288,15 @@ public class TalentTreeEditorWindow : EditorWindow
 
     private void DrawNodeProperties()
     {
-        EditorGUILayout.LabelField("Node Properties", EditorStyles.boldLabel);
+        DrawTreeLoader();
+        EditorGUILayout.Space(10);
 
-        _panelSize = EditorGUILayout.Vector2Field("Panel size (W × H)", _panelSize);
+        EditorGUILayout.LabelField("Grid", EditorStyles.boldLabel);
+        _columns = Mathf.Max(1, EditorGUILayout.IntField("Columns", _columns));
+        _rows    = Mathf.Max(1, EditorGUILayout.IntField("Rows", _rows));
+        EditorGUILayout.Space(8);
+
+        EditorGUILayout.LabelField("Node Properties", EditorStyles.boldLabel);
         EditorGUILayout.Space(4);
 
         if (_tree == null)
