@@ -8,6 +8,7 @@ public class TalentTreeSO : ScriptableObject
     public string TreeName;
     public Sprite SpecIcon;
     public GameObject BackgroundPrefab;
+    public TabDefenitionSO TabDefinition;
 
     public List<TalentNodeData> Nodes;
 }

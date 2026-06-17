@@ -133,7 +133,7 @@ public class TalentTreePresenter : MonoBehaviour
         {
             if (tree == null) continue;
             var tab = Instantiate(_tabPrefab, _tabsContainer);
-            tab.Initialize(tree);
+            tab.Initialize(tree, tree.TabDefinition);
             _spawnedTabs.Add(tab);
         }
     }

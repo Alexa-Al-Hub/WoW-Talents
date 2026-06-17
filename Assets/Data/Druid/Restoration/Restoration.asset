@@ -15,6 +15,7 @@ MonoBehaviour:
   TreeName: Restoration
   SpecIcon: {fileID: 0}
   BackgroundPrefab: {fileID: 2527095427391677372, guid: 66d2e72cb3130b8489660cc7120f2d95, type: 3}
+  TabDefinition: {fileID: 11400000, guid: 4d549436765b2f349b5534c5b248e33c, type: 2}
   Nodes:
   - Definition: {fileID: 11400000, guid: ba44fbc461aaf6e4591db49d60732b08, type: 2}
     X: 1

@@ -9,12 +9,15 @@ public class TreeTabView : MonoBehaviour
     [SerializeField] private TextMeshProUGUI  _pointsText;
 
     public TalentTreeSO Tree { get; private set; }
+    public TabDefenitionSO TabData { get; private set; }
 
-    public void Initialize(TalentTreeSO tree)
+
+    public void Initialize(TalentTreeSO tree, TabDefenitionSO tabDefenition)
     {
         Tree = tree;
-        if (_specIcon    != null) _specIcon.sprite  = tree.SpecIcon;
-        if (_treeNameText != null) _treeNameText.text = tree.TreeName;
+        if (tabDefenition == null) return;
+        if (_specIcon     != null) _specIcon.sprite   = tabDefenition.Icon;
+        if (_treeNameText != null) _treeNameText.text = tabDefenition.DisplayName;
         UpdatePoints(0);
     }
 

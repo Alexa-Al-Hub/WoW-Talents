@@ -15,6 +15,7 @@ MonoBehaviour:
   TreeName: Feral Combat
   SpecIcon: {fileID: 0}
   BackgroundPrefab: {fileID: 2527095427391677372, guid: 4d7bbb62f164d5449bd18416735d2bdb, type: 3}
+  TabDefinition: {fileID: 11400000, guid: 0b8a1e25c0babae48aa44454d80ed0bb, type: 2}
   Nodes:
   - Definition: {fileID: 11400000, guid: 45b471544efdfa94c9c4726dd539645f, type: 2}
     X: -0

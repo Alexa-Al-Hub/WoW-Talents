@@ -15,6 +15,7 @@ MonoBehaviour:
   TreeName: Balance
   SpecIcon: {fileID: 0}
   BackgroundPrefab: {fileID: 2527095427391677372, guid: 00c94ec3dabcfa04581f342ddc6a0dbf, type: 3}
+  TabDefinition: {fileID: 11400000, guid: 62095110acacb294a8ae996e2855f027, type: 2}
   Nodes:
   - Definition: {fileID: 11400000, guid: 65e6723ce7259b7458718b846efa9692, type: 2}
     X: 0
