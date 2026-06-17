@@ -240,7 +240,8 @@ public class TalentTreePresenter : MonoBehaviour
     {
         foreach (var tree in _classData.Trees)
         {
-            var node = tree.Nodes.FirstOrDefault(candidate => candidate.Definition.Id == talentId);
+            if (tree == null) continue;
+            var node = tree.Nodes.FirstOrDefault(candidate => candidate?.Definition != null && candidate.Definition.Id == talentId);
             if (node == null) continue;
 
             if (_talentManager.TryInvestPoint(node.Definition))

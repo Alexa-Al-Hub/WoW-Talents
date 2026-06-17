@@ -6,5 +6,5 @@ public class TabDefenitionSO : ScriptableObject
     [Header("Tab data")]
     public string DisplayName;
     public Sprite Icon;
-    public string TotalTreePoints;
+    public int TotalTreePoints;
 }
