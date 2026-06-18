@@ -7,19 +7,22 @@ using UnityEngine.UI;
 
 public class TalentTreePresenter : MonoBehaviour
 {
-    [Header("Data")]
+    [Header("Character Data")]
     [SerializeField] private CharacterSO _classData;
 
-    [Header("UI")]
-    [SerializeField] private TalentNodeView  _nodePrefab;
-    [SerializeField] private TreePanelView   _treePanelPrefab;
-    [SerializeField] private RectTransform   _container;
+    [Header("Talent Points")]
+    [SerializeField] private int _totalTalentPoints = 51;
 
-    [Header("Header")]
+    [Header("Talent Tree UI")]
+    [SerializeField] private TalentNodeView _nodePrefab;
+    [SerializeField] private TreePanelView _treePanelPrefab;
+    [SerializeField] private RectTransform _container;
+
+    [Header("Header Panel")]
     [SerializeField] private TextMeshProUGUI _classHeaderText;
     [SerializeField] private TextMeshProUGUI _pointsLeftText;
 
-    [Header("Tabs")]
+    [Header("Tree Tab UI")]
     [SerializeField] private TreeTabView _tabPrefab;
     [SerializeField] private RectTransform _tabsContainer;
 
@@ -29,11 +32,11 @@ public class TalentTreePresenter : MonoBehaviour
     [SerializeField] private float _nodeTopPadding = 10f;
 
     private PlayerTalentManager _talentManager;
-    private readonly List<TalentNodeView> _spawnedNodes = new();
+    private readonly List<(TalentTreeSO tree, TalentNodeView view)> _spawnedNodes = new();
     private readonly List<GameObject> _spawnedPanels = new();
     private readonly List<TreeTabView> _spawnedTabs = new();
 
-    private void OnEnable()  => StartCoroutine(BuildAfterLayout());
+    private void OnEnable() => StartCoroutine(BuildAfterLayout());
     private void OnDisable() => ClearSpawned();
 
     private IEnumerator BuildAfterLayout()
@@ -55,7 +58,7 @@ public class TalentTreePresenter : MonoBehaviour
         if (_classData == null || _nodePrefab == null || _container == null)
             return;
 
-        _talentManager = new PlayerTalentManager(51);
+        _talentManager = new PlayerTalentManager(_totalTalentPoints);
 
         // Keep the trees container behind its siblings (Header, Tabs) so backgrounds render behind everything.
         _container.SetAsFirstSibling();
@@ -85,8 +88,7 @@ public class TalentTreePresenter : MonoBehaviour
         var layouts = CollectLayouts();
         if (layouts.Count == 0) return;
 
-        var treesGridLayout = _container.GetComponent<GridLayoutGroup>();
-        if (treesGridLayout == null) return;
+        if (!_container.TryGetComponent<GridLayoutGroup>(out var treesGridLayout)) return;
 
         // Nodes render at a fixed, comfortable size; the canvas scaling (Constant Pixel Size)
         // decides their final on-screen pixels, not any tree-fitting math.
@@ -95,29 +97,29 @@ public class TalentTreePresenter : MonoBehaviour
         // The GridLayoutGroup needs an explicit cell size, so derive one column from the
         // container, accounting for the grid's own spacing and padding.
         float totalColumnSpacing = treesGridLayout.spacing.x * (layouts.Count - 1);
-        float horizontalPadding  = treesGridLayout.padding.left + treesGridLayout.padding.right;
-        float verticalPadding    = treesGridLayout.padding.top + treesGridLayout.padding.bottom;
-        float columnWidth        = (_container.rect.width  - totalColumnSpacing - horizontalPadding) / layouts.Count;
-        float columnHeight       =  _container.rect.height - verticalPadding;
+        float horizontalPadding = treesGridLayout.padding.left + treesGridLayout.padding.right;
+        float verticalPadding = treesGridLayout.padding.top + treesGridLayout.padding.bottom;
+        float columnWidth = (_container.rect.width - totalColumnSpacing - horizontalPadding) / layouts.Count;
+        float columnHeight = _container.rect.height - verticalPadding;
 
         // Every panel is the same full-column size, so the background (stretched to fill
         // the panel) lands in the same place for every tree regardless of node count.
-        treesGridLayout.startCorner     = GridLayoutGroup.Corner.UpperLeft;
-        treesGridLayout.startAxis       = GridLayoutGroup.Axis.Horizontal;
-        treesGridLayout.constraint      = GridLayoutGroup.Constraint.FixedColumnCount;
+        treesGridLayout.startCorner = GridLayoutGroup.Corner.UpperLeft;
+        treesGridLayout.startAxis = GridLayoutGroup.Axis.Horizontal;
+        treesGridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
         treesGridLayout.constraintCount = layouts.Count;
-        treesGridLayout.cellSize        = new Vector2(columnWidth, columnHeight);
+        treesGridLayout.cellSize = new Vector2(columnWidth, columnHeight);
 
         foreach (var (tree, nodes) in layouts)
         {
             var panel = SpawnPanel(tree);
 
             // Center the tree horizontally inside its column; node size stays fixed.
-            float contentWidth     = nodes.Max(node => node.X) * step + _cellSize;
+            float contentWidth = nodes.Max(node => node.X) * step + _cellSize;
             float horizontalOffset = Mathf.Max(0f, (columnWidth - contentWidth) * 0.5f);
 
             foreach (var nodeData in nodes)
-                SpawnNode(nodeData, panel, step, horizontalOffset);
+                SpawnNode(tree, nodeData, panel, step, horizontalOffset);
         }
 
         // Newly instantiated panels don't always get picked up by Unity's automatic
@@ -134,6 +136,7 @@ public class TalentTreePresenter : MonoBehaviour
             if (tree == null) continue;
             var tab = Instantiate(_tabPrefab, _tabsContainer);
             tab.Initialize(tree, tree.TabDefinition);
+            tab.OnCancelClicked += HandleTreeCancelClicked;
             _spawnedTabs.Add(tab);
         }
     }
@@ -172,7 +175,7 @@ public class TalentTreePresenter : MonoBehaviour
         return panelRectTransform;
     }
 
-    private void SpawnNode(TalentNodeData nodeData, RectTransform parentPanel, float step, float horizontalOffset)
+    private void SpawnNode(TalentTreeSO tree, TalentNodeData nodeData, RectTransform parentPanel, float step, float horizontalOffset)
     {
         if (nodeData.Definition == null) return;
 
@@ -181,35 +184,35 @@ public class TalentTreePresenter : MonoBehaviour
         nodeView.OnTalentClicked += HandleTalentClicked;
 
         var nodeRectTransform = nodeView.GetComponent<RectTransform>();
-        nodeRectTransform.anchorMin        = new Vector2(0f, 1f);
-        nodeRectTransform.anchorMax        = new Vector2(0f, 1f);
-        nodeRectTransform.pivot            = new Vector2(0f, 1f);
-        nodeRectTransform.sizeDelta        = new Vector2(_cellSize, _cellSize);
+        nodeRectTransform.anchorMin = new Vector2(0f, 1f);
+        nodeRectTransform.anchorMax = new Vector2(0f, 1f);
+        nodeRectTransform.pivot = new Vector2(0f, 1f);
+        nodeRectTransform.sizeDelta = new Vector2(_cellSize, _cellSize);
         nodeRectTransform.anchoredPosition = new Vector2(
             horizontalOffset + nodeData.X * step,
             -(nodeData.Y * step) - _nodeTopPadding);
 
-        _spawnedNodes.Add(nodeView);
+        _spawnedNodes.Add((tree, nodeView));
     }
 
     // ── Talent logic ──────────────────────────────────────────────────────────
 
     private void RefreshAllNodes()
     {
-        foreach (var nodeView in _spawnedNodes)
+        foreach (var (tree, nodeView) in _spawnedNodes)
         {
             var definition = nodeView.AssignedData;
             if (definition == null) continue;
 
-            int  rank      = _talentManager.GetTalentRank(definition.Id);
-            bool canInvest = _talentManager.CanInvestInTalent(definition);
+            int rank = _talentManager.GetTalentRank(definition.Id);
+            bool canInvest = _talentManager.CanInvestInTalent(tree, definition);
             nodeView.UpdateState(rank, definition.MaxRank, canInvest);
         }
 
         foreach (var tab in _spawnedTabs)
         {
             if (tab?.Tree == null) continue;
-            tab.UpdatePoints(GetPointsInTree(tab.Tree));
+            tab.UpdatePoints(_talentManager.GetPointsInTree(tab.Tree));
         }
 
         RefreshHeader();
@@ -221,7 +224,7 @@ public class TalentTreePresenter : MonoBehaviour
         {
             var pointsPerTree = _classData.Trees
                 .Where(tree => tree != null)
-                .Select(tree => GetPointsInTree(tree).ToString());
+                .Select(tree => _talentManager.GetPointsInTree(tree).ToString());
             _classHeaderText.text = $"{_classData.CharacterName} ({string.Join("/", pointsPerTree)})";
         }
 
@@ -229,11 +232,12 @@ public class TalentTreePresenter : MonoBehaviour
             _pointsLeftText.text = $"Points left: {_talentManager.AvailablePoints}";
     }
 
-    private int GetPointsInTree(TalentTreeSO tree)
+    private void HandleTreeCancelClicked(TalentTreeSO tree)
     {
-        var firstValidNode = tree.Nodes?.FirstOrDefault(node => node?.Definition != null);
-        if (firstValidNode == null) return 0;
-        return _talentManager.GetPointsInTree(firstValidNode.Definition.TreeId);
+        if (tree == null) return;
+
+        _talentManager.ResetTree(tree);
+        RefreshAllNodes();
     }
 
     private void HandleTalentClicked(string talentId)
@@ -244,7 +248,7 @@ public class TalentTreePresenter : MonoBehaviour
             var node = tree.Nodes.FirstOrDefault(candidate => candidate?.Definition != null && candidate.Definition.Id == talentId);
             if (node == null) continue;
 
-            if (_talentManager.TryInvestPoint(node.Definition))
+            if (_talentManager.TryInvestPoint(tree, node.Definition))
                 RefreshAllNodes();
             return;
         }

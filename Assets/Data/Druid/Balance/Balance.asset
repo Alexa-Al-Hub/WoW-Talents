@@ -30,11 +30,5 @@ MonoBehaviour:
     X: 1
     Y: 2
   - Definition: {fileID: 11400000, guid: 35d4d168432877a4b83aed5be88c5044, type: 2}
-    X: 3
-    Y: 3
-  - Definition: {fileID: 11400000, guid: be4d451141625044593cfe0af59f12a4, type: 2}
-    X: 3
-    Y: 2
-  - Definition: {fileID: 11400000, guid: 570d32a574f056842958b31b2df4af9f, type: 2}
     X: 2
-    Y: 3
+    Y: 2

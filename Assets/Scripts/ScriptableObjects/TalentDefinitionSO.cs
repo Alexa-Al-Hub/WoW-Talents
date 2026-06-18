@@ -14,8 +14,6 @@ public class TalentDefinitionSO : ScriptableObject
     [Min(1)] public int MaxRank = 1;
 
     [Header("Requirements")]
-    [Tooltip("Tree Id")]
-    public string TreeId;
     [Tooltip("Required points in the tree")]
     public int RequiredTreePoints;
 
