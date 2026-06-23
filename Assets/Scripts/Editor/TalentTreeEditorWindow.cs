@@ -58,7 +58,10 @@ namespace TalentTree
 
         private void OnSelectionChange()
         {
-            if (Selection.activeObject is TalentTreeSO selectedTree) SetTree(selectedTree);
+            if (Selection.activeObject is TalentTreeSO selectedTree)
+            {
+                SetTree(selectedTree);
+            }
         }
 
         private void SetTree(TalentTreeSO tree)
@@ -83,9 +86,13 @@ namespace TalentTree
                                       position.width, panelHeight);
 
             if (_tree != null)
+            {
                 DrawCanvas(canvasRect);
+            }
             else
+            {
                 EditorGUI.LabelField(canvasRect, "Load a tree from the panel below ↓", EditorStyles.centeredGreyMiniLabel);
+            }
 
             DrawSidebar(panelRect);
         }
@@ -99,9 +106,15 @@ namespace TalentTree
                 GUILayout.Label(_tree != null ? _tree.TreeName : "—", EditorStyles.boldLabel);
                 GUILayout.FlexibleSpace();
                 _snapToGrid = GUILayout.Toggle(_snapToGrid, "Snap", EditorStyles.toolbarButton, GUILayout.Width(56));
-                if (GUILayout.Button("Add Node", EditorStyles.toolbarButton)) AddNode();
+                if (GUILayout.Button("Add Node", EditorStyles.toolbarButton))
+                {
+                    AddNode();
+                }
                 GUI.enabled = _selectedNodeIndex >= 0;
-                if (GUILayout.Button("Remove", EditorStyles.toolbarButton)) RemoveSelected();
+                if (GUILayout.Button("Remove", EditorStyles.toolbarButton))
+                {
+                    RemoveSelected();
+                }
                 GUI.enabled = true;
             }
         }
@@ -143,12 +156,18 @@ namespace TalentTree
             DrawGridLines(canvasWidth, canvasHeight, scaledStep);
 
             if (_tree.Nodes != null)
+            {
                 for (int i = 0; i < _tree.Nodes.Count; i++)
+                {
                     DrawNode(i, scaledStep, scaledCell);
+                }
+            }
 
             // Only the canvas consumes pointer input, so clicks in the panel don't deselect nodes.
             if (mouseOverCanvas)
+            {
                 HandleCanvasEvents(scaledStep, scaledCell);
+            }
 
             GUI.EndGroup();
         }
@@ -157,7 +176,9 @@ namespace TalentTree
         private Sprite GetBackgroundSprite()
         {
             if (_tree.BackgroundPrefab == null)
+            {
                 return null;
+            }
 
             var backgroundImage = _tree.BackgroundPrefab.GetComponentInChildren<Image>(true);
             return backgroundImage != null ? backgroundImage.sprite : null;
@@ -166,15 +187,22 @@ namespace TalentTree
         private void DrawGridLines(float canvasWidth, float canvasHeight, float scaledStep)
         {
             for (float x = 0; x < canvasWidth; x += scaledStep)
+            {
                 EditorGUI.DrawRect(new Rect(x, 0, 1, canvasHeight), GridColor);
+            }
             for (float y = 0; y < canvasHeight; y += scaledStep)
+            {
                 EditorGUI.DrawRect(new Rect(0, y, canvasWidth, 1), GridColor);
+            }
         }
 
         private void DrawNode(int nodeIndex, float scaledStep, float scaledCell)
         {
             var node = _tree.Nodes[nodeIndex];
-            if (node == null) return;
+            if (node == null)
+            {
+                return;
+            }
 
             Rect nodeRect = NodeRect(node.X, node.Y, scaledStep, scaledCell);
             bool selected = nodeIndex == _selectedNodeIndex;
@@ -184,8 +212,10 @@ namespace TalentTree
 
             var icon = node.Definition?.Icon;
             if (icon != null)
+            {
                 GUI.DrawTexture(new Rect(nodeRect.x + 4, nodeRect.y + 4, nodeRect.width - 8, nodeRect.height - 20),
                                 icon.texture, ScaleMode.ScaleToFit);
+            }
 
             string label = node.Definition ? node.Definition.DisplayName : "(empty)";
             GUI.Label(new Rect(nodeRect.x, nodeRect.yMax - 18, nodeRect.width, 18), label, LabelStyle);
@@ -196,7 +226,10 @@ namespace TalentTree
         private void HandleCanvasEvents(float scaledStep, float scaledCell)
         {
             Event currentEvent = Event.current;
-            if (currentEvent == null) return;
+            if (currentEvent == null)
+            {
+                return;
+            }
 
             switch (currentEvent.type)
             {
@@ -265,7 +298,9 @@ namespace TalentTree
 
             string currentLabel = _tree != null ? _tree.name : "(none selected)";
             if (EditorGUILayout.DropdownButton(new GUIContent(currentLabel), FocusType.Keyboard))
+            {
                 ShowTreeMenu();
+            }
         }
 
         private void ShowTreeMenu()
@@ -274,13 +309,18 @@ namespace TalentTree
             var treeAssetGuids = AssetDatabase.FindAssets("t:TalentTreeSO");
 
             if (treeAssetGuids.Length == 0)
+            {
                 menu.AddDisabledItem(new GUIContent("No TalentTreeSO assets found"));
+            }
 
             foreach (string guid in treeAssetGuids)
             {
                 string assetPath = AssetDatabase.GUIDToAssetPath(guid);
                 var tree = AssetDatabase.LoadAssetAtPath<TalentTreeSO>(assetPath);
-                if (tree == null) continue;
+                if (tree == null)
+                {
+                    continue;
+                }
 
                 menu.AddItem(new GUIContent(tree.name), tree == _tree, () => SetTree(tree));
             }
@@ -341,20 +381,32 @@ namespace TalentTree
 
         private int NodeAt(Vector2 pointerPosition, float scaledStep, float scaledCell)
         {
-            if (_tree.Nodes == null) return -1;
+            if (_tree.Nodes == null)
+            {
+                return -1;
+            }
             for (int i = _tree.Nodes.Count - 1; i >= 0; i--)
             {
                 var node = _tree.Nodes[i];
-                if (node != null && NodeRect(node.X, node.Y, scaledStep, scaledCell).Contains(pointerPosition)) return i;
+                if (node != null && NodeRect(node.X, node.Y, scaledStep, scaledCell).Contains(pointerPosition))
+                {
+                    return i;
+                }
             }
             return -1;
         }
 
         private void AddNode()
         {
-            if (_tree == null) return;
+            if (_tree == null)
+            {
+                return;
+            }
             Undo.RecordObject(_tree, "Add Talent Node");
-            if (_tree.Nodes == null) _tree.Nodes = new List<TalentNodeData>();
+            if (_tree.Nodes == null)
+            {
+                _tree.Nodes = new List<TalentNodeData>();
+            }
             _tree.Nodes.Add(new TalentNodeData());
             EditorUtility.SetDirty(_tree);
             _selectedNodeIndex = _tree.Nodes.Count - 1;
@@ -363,7 +415,10 @@ namespace TalentTree
 
         private void RemoveSelected()
         {
-            if (_selectedNodeIndex < 0 || _tree?.Nodes == null || _selectedNodeIndex >= _tree.Nodes.Count) return;
+            if (_selectedNodeIndex < 0 || _tree?.Nodes == null || _selectedNodeIndex >= _tree.Nodes.Count)
+            {
+                return;
+            }
             Undo.RecordObject(_tree, "Remove Talent Node");
             _tree.Nodes.RemoveAt(_selectedNodeIndex);
             EditorUtility.SetDirty(_tree);
@@ -380,7 +435,9 @@ namespace TalentTree
         public override void OnInspectorGUI()
         {
             if (GUILayout.Button("Open in Talent Tree Editor", GUILayout.Height(28)))
+            {
                 TalentTreeEditorWindow.OpenWith((TalentTreeSO)target);
+            }
 
             EditorGUILayout.Space(4);
             DrawDefaultInspector();

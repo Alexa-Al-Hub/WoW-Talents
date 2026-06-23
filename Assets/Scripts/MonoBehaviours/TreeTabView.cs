@@ -29,21 +29,36 @@ namespace TalentTree
                 _cancelButton.onClick.AddListener(RaiseCancelClicked);
             }
 
-            if (tabDefenition == null) return;
-            if (_specIcon != null) _specIcon.sprite = tabDefenition.Icon;
-            if (_treeNameText != null) _treeNameText.text = tabDefenition.DisplayName;
+            if (tabDefenition == null)
+            {
+                return;
+            }
+            if (_specIcon != null)
+            {
+                _specIcon.sprite = tabDefenition.Icon;
+            }
+            if (_treeNameText != null)
+            {
+                _treeNameText.text = tabDefenition.DisplayName;
+            }
         }
 
         public void UpdatePoints(int points)
         {
-            if (_pointsText != null) _pointsText.text = $"({points})";
+            if (_pointsText != null)
+            {
+                _pointsText.text = $"({points})";
+            }
         }
 
         private void RaiseCancelClicked() => OnCancelClicked?.Invoke(Tree);
 
         private void OnDestroy()
         {
-            if (_cancelButton != null) _cancelButton.onClick.RemoveListener(RaiseCancelClicked);
+            if (_cancelButton != null)
+            {
+                _cancelButton.onClick.RemoveListener(RaiseCancelClicked);
+            }
         }
     }
 }

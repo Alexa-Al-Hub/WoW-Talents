@@ -58,7 +58,9 @@ namespace TalentTree
             ClearSpawned();
 
             if (_classData == null || _nodePrefab == null || _container == null)
+            {
                 return;
+            }
 
             _talentManager = new PlayerTalentManager(_totalTalentPoints);
 
@@ -77,20 +79,34 @@ namespace TalentTree
             _spawnedPanels.Clear();
 
             if (_container != null)
+            {
                 for (int i = _container.childCount - 1; i >= 0; i--)
+                {
                     Destroy(_container.GetChild(i).gameObject);
+                }
+            }
 
             if (_tabsContainer != null)
+            {
                 for (int i = _tabsContainer.childCount - 1; i >= 0; i--)
+                {
                     Destroy(_tabsContainer.GetChild(i).gameObject);
+                }
+            }
         }
 
         private void BuildTrees()
         {
             var layouts = CollectLayouts();
-            if (layouts.Count == 0) return;
+            if (layouts.Count == 0)
+            {
+                return;
+            }
 
-            if (!_container.TryGetComponent<GridLayoutGroup>(out var treesGridLayout)) return;
+            if (!_container.TryGetComponent<GridLayoutGroup>(out var treesGridLayout))
+            {
+                return;
+            }
 
             // Nodes render at a fixed, comfortable size; the canvas scaling (Constant Pixel Size)
             // decides their final on-screen pixels, not any tree-fitting math.
@@ -121,7 +137,9 @@ namespace TalentTree
                 float horizontalOffset = Mathf.Max(0f, (columnWidth - contentWidth) * 0.5f);
 
                 foreach (var nodeData in nodes)
+                {
                     SpawnNode(tree, nodeData, panel, step, horizontalOffset);
+                }
             }
 
             // Newly instantiated panels don't always get picked up by Unity's automatic
@@ -131,11 +149,18 @@ namespace TalentTree
 
         private void BuildTabs()
         {
-            if (_tabPrefab == null || _tabsContainer == null) return;
+            if (_tabPrefab == null || _tabsContainer == null)
+            {
+                return;
+            }
 
             foreach (var tree in _classData.Trees)
             {
-                if (tree == null) continue;
+                if (tree == null)
+                {
+                    continue;
+                }
+
                 var tab = Instantiate(_tabPrefab, _tabsContainer);
                 tab.Initialize(tree, tree.TabDefinition);
                 tab.OnCancelClicked += HandleTreeCancelClicked;
@@ -148,9 +173,17 @@ namespace TalentTree
             var layouts = new List<(TalentTreeSO, List<TalentNodeData>)>();
             foreach (var tree in _classData.Trees)
             {
-                if (tree == null || tree.Nodes == null) continue;
+                if (tree == null || tree.Nodes == null)
+                {
+                    continue;
+                }
+
                 var nodes = tree.Nodes.Where(node => node != null).ToList();
-                if (nodes.Count == 0) continue;
+                if (nodes.Count == 0)
+                {
+                    continue;
+                }
+
                 layouts.Add((tree, nodes));
             }
             return layouts;
@@ -179,12 +212,14 @@ namespace TalentTree
 
         private void SpawnNode(TalentTreeSO tree, TalentNodeData nodeData, RectTransform parentPanel, float step, float horizontalOffset)
         {
-            if (nodeData.Definition == null) return;
+            if (nodeData.Definition == null)
+            {
+                return;
+            }
 
             var nodeView = Instantiate(_nodePrefab, parentPanel);
             nodeView.Initialize(nodeData.Definition);
 
-            // Capture the owning tree per node so clicks need no lookup to find it.
             nodeView.OnInvestRequested += clickedView => HandleInvestRequested(tree, clickedView.AssignedData);
             nodeView.OnRemoveRequested += clickedView => HandleRemoveRequested(tree, clickedView.AssignedData);
 
@@ -210,24 +245,34 @@ namespace TalentTree
         private void RefreshAllNodes()
         {
             foreach (var treeNodes in _nodesByTree)
+            {
                 RefreshTreeNodes(treeNodes.Key, treeNodes.Value);
+            }
 
             foreach (var treeTab in _tabsByTree)
+            {
                 treeTab.Value.UpdatePoints(_talentManager.GetPointsInTree(treeTab.Key));
+            }
 
             RefreshHeader();
         }
 
-        // Updates only the nodes and tab of a single tree, plus the (shared) header.
         private void RefreshTree(TalentTreeSO tree)
         {
-            if (tree == null) return;
+            if (tree == null)
+            {
+                return;
+            }
 
             if (_nodesByTree.TryGetValue(tree, out var nodeViews))
+            {
                 RefreshTreeNodes(tree, nodeViews);
+            }
 
             if (_tabsByTree.TryGetValue(tree, out var tab))
+            {
                 tab.UpdatePoints(_talentManager.GetPointsInTree(tree));
+            }
 
             RefreshHeader();
         }
@@ -237,23 +282,29 @@ namespace TalentTree
             foreach (var nodeView in nodeViews)
             {
                 var definition = nodeView.AssignedData;
-                if (definition == null) continue;
+                if (definition == null)
+                {
+                    continue;
+                }
 
                 int rank = _talentManager.GetTalentRank(definition.Id);
                 bool canInvest = _talentManager.CanInvestInTalent(tree, definition);
-                nodeView.UpdateState(rank, definition.MaxRank, canInvest);
+                bool requirementsMet = _talentManager.AreRequirementsMet(tree, definition);
+                nodeView.UpdateState(rank, definition.MaxRank, canInvest, requirementsMet);
             }
         }
 
-        // A change inside one tree only affects that tree, unless the global "points left"
-        // gate crosses zero — then every tree's investability flips and all need refreshing.
         private void RefreshAfterChange(TalentTreeSO tree, int pointsBeforeChange)
         {
             bool availabilityGateFlipped = (pointsBeforeChange == 0) != (_talentManager.AvailablePoints == 0);
             if (availabilityGateFlipped)
+            {
                 RefreshAllNodes();
+            }
             else
+            {
                 RefreshTree(tree);
+            }
         }
 
         private void RefreshHeader()
@@ -267,34 +318,51 @@ namespace TalentTree
             }
 
             if (_pointsLeftText != null)
+            {
                 _pointsLeftText.text = $"Points left: {_talentManager.AvailablePoints}";
+            }
         }
 
         private void HandleInvestRequested(TalentTreeSO tree, TalentDefinitionSO talentDef)
         {
-            if (talentDef == null) return;
+            if (talentDef == null)
+            {
+                return;
+            }
 
             int pointsBeforeChange = _talentManager.AvailablePoints;
             if (_talentManager.TryInvestPoint(tree, talentDef))
+            {
                 RefreshAfterChange(tree, pointsBeforeChange);
+            }
         }
 
         private void HandleRemoveRequested(TalentTreeSO tree, TalentDefinitionSO talentDef)
         {
-            if (talentDef == null) return;
+            if (talentDef == null)
+            {
+                return;
+            }
 
             int pointsBeforeChange = _talentManager.AvailablePoints;
             if (_talentManager.TryRemovePoint(tree, talentDef))
+            {
                 RefreshAfterChange(tree, pointsBeforeChange);
+            }
         }
 
         private void HandleTreeCancelClicked(TalentTreeSO tree)
         {
-            if (tree == null) return;
+            if (tree == null)
+            {
+                return;
+            }
 
             int pointsBeforeChange = _talentManager.AvailablePoints;
             if (_talentManager.ResetTree(tree) > 0)
+            {
                 RefreshAfterChange(tree, pointsBeforeChange);
+            }
         }
     }
 }
