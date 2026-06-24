@@ -6,12 +6,12 @@ namespace TalentTree
     {
         [SerializeField] private RectTransform _backgroundContainer;
 
-        // The background stretches to fill its parent panel, whose size is driven by the
-        // TreesContainer's GridLayoutGroup, so it always matches the cell regardless of tree count.
         public void Initialize(GameObject backgroundPrefab)
         {
             if (backgroundPrefab == null)
+            {
                 return;
+            }
 
             var backgroundParent = _backgroundContainer != null ? _backgroundContainer : (RectTransform)transform;
             var backgroundInstance = Instantiate(backgroundPrefab, backgroundParent, false);
@@ -26,7 +26,7 @@ namespace TalentTree
                 backgroundRectTransform.localScale = Vector3.one;
             }
 
-            backgroundInstance.transform.SetAsFirstSibling();   // render behind the nodes
+            backgroundInstance.transform.SetAsFirstSibling();
         }
     }
 }

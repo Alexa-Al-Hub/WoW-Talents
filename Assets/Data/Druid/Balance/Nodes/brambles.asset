@@ -15,8 +15,10 @@ MonoBehaviour:
   Id: brambles
   DisplayName: Brambles
   Icon: {fileID: 21300000, guid: 8362aed3b960bea4689cadcb6d2f5013, type: 3}
-  Description: 
-  MaxRank: 5
-  TreeId: Balance
+  Description:
   RequiredTreePoints: 0
-  RequiredTalent: {fileID: 0}
+  RankDescriptions:
+  - Damage caused by your Thorns and Entangling Roots increased by 25%.
+  - Damage caused by your Thorns and Entangling Roots increased by 50%.
+  - Damage caused by your Thorns and Entangling Roots increased by 75%.
+  RequiredTalents: []

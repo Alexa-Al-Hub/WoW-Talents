@@ -55,12 +55,33 @@ namespace TalentTree
 
         public bool AreRequirementsMet(TalentTreeSO tree, TalentDefinitionSO talentDef)
         {
+            return EvaluateRequirements(tree, talentDef).Reason == TalentLockReason.None;
+        }
+
+        public (TalentLockReason Reason, TalentDefinitionSO BlockingPrerequisite) EvaluateRequirements(TalentTreeSO tree, TalentDefinitionSO talentDef)
+        {
             if (GetPointsInTree(tree) < talentDef.RequiredTreePoints)
             {
-                return false;
+                return (TalentLockReason.NotEnoughTreePoints, null);
             }
 
-            return ArePrerequisitesMaxed(talentDef);
+            if (talentDef.RequiredTalents != null)
+            {
+                foreach (var requiredTalent in talentDef.RequiredTalents)
+                {
+                    if (requiredTalent == null)
+                    {
+                        continue;
+                    }
+
+                    if (GetTalentRank(requiredTalent) < requiredTalent.MaxRank)
+                    {
+                        return (TalentLockReason.PrerequisiteNotMaxed, requiredTalent);
+                    }
+                }
+            }
+
+            return (TalentLockReason.None, null);
         }
 
         public bool CanInvestInTalent(TalentTreeSO tree, TalentDefinitionSO talentDef)
@@ -81,21 +102,21 @@ namespace TalentTree
         public TalentDisplayState GetDisplayState(TalentTreeSO tree, TalentDefinitionSO talentDef)
         {
             int rank = GetTalentRank(talentDef);
-            bool requirementsMet = AreRequirementsMet(tree, talentDef);
-            bool canInvest = requirementsMet && rank < talentDef.MaxRank && AvailablePoints > 0;
+            var (lockReason, blockingPrerequisite) = EvaluateRequirements(tree, talentDef);
+            bool canInvest = lockReason == TalentLockReason.None && rank < talentDef.MaxRank && AvailablePoints > 0;
 
-            return new TalentDisplayState(rank, talentDef.MaxRank, requirementsMet, canInvest);
+            return new TalentDisplayState(rank, talentDef.MaxRank, canInvest, lockReason, blockingPrerequisite);
         }
 
         public bool TryInvestPoint(TalentTreeSO tree, TalentDefinitionSO talentDef)
         {
             if (!CanInvestInTalent(tree, talentDef))
             {
-                Debug.LogWarning($"[Talent Manager] Could not invest in talent {talentDef.DisplayName}");
                 return false;
             }
 
             _ranksByTalent[talentDef] = GetTalentRank(talentDef) + 1;
+
             return true;
         }
 
@@ -146,29 +167,6 @@ namespace TalentTree
             }
 
             return refundedPoints;
-        }
-
-        private bool ArePrerequisitesMaxed(TalentDefinitionSO talentDef)
-        {
-            if (talentDef.RequiredTalents == null)
-            {
-                return true;
-            }
-
-            foreach (var requiredTalent in talentDef.RequiredTalents)
-            {
-                if (requiredTalent == null)
-                {
-                    continue;
-                }
-
-                if (GetTalentRank(requiredTalent) < requiredTalent.MaxRank)
-                {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
         private bool WouldInvalidateTree(TalentTreeSO tree, TalentDefinitionSO removedTalent)

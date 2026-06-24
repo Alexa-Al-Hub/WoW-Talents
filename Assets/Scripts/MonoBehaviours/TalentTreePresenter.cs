@@ -27,18 +27,29 @@ namespace TalentTree
         [SerializeField] private TreeTabView _tabPrefab;
         [SerializeField] private RectTransform _tabsContainer;
 
+        [Header("Tooltip")]
+        [SerializeField] private TalentTooltipView _tooltipPrefab;
+
         [Header("Layout")]
         [SerializeField] private float _cellSize = 64f;
         [SerializeField] private float _cellSpacing = 10f;
         [SerializeField] private float _nodeTopPadding = 10f;
 
+        private const string PointsLeftFormat = "Points left: {0}";
+
         private PlayerTalentManager _talentManager;
+        private TalentTreeBuilder _treeBuilder;
+        private TreeTabBarBuilder _tabBarBuilder;
+        private TalentTooltipBuilder _tooltipBuilder;
+        private TalentTreeSO _hoveredTree;
+        private TalentNodeView _hoveredNode;
         private readonly Dictionary<TalentTreeSO, List<TalentNodeView>> _nodesByTree = new();
         private readonly Dictionary<TalentTreeSO, TreeTabView> _tabsByTree = new();
         private readonly Dictionary<CharacterSO, PlayerTalentManager> _managersByCharacter = new();
 
         private void OnEnable() => Build();
         private void OnDisable() => ClearSpawned();
+        private void OnDestroy() => _tooltipBuilder?.Destroy();
 
         public void SetCharacter(CharacterSO character)
         {
@@ -81,7 +92,8 @@ namespace TalentTree
             _talentManager = GetOrCreateManager(_classData);
             _container.SetAsFirstSibling();
 
-            BuildTrees();
+            CreateTooltip(parentCanvas.rootCanvas);
+            SpawnTrees();
             BuildTabs();
             RefreshAllNodes();
         }
@@ -96,10 +108,26 @@ namespace TalentTree
             return manager;
         }
 
+        private void CreateTooltip(Canvas rootCanvas)
+        {
+            if (_tooltipBuilder != null || _tooltipPrefab == null || rootCanvas == null)
+            {
+                return;
+            }
+
+            _tooltipBuilder = new TalentTooltipBuilder(_tooltipPrefab, rootCanvas);
+        }
+
         private void ClearSpawned()
         {
             _nodesByTree.Clear();
             _tabsByTree.Clear();
+
+            // The spawned nodes are about to be destroyed, so drop any hover state and hide the
+            // (reused) tooltip instead of destroying it.
+            _hoveredTree = null;
+            _hoveredNode = null;
+            _tooltipBuilder?.Hide();
 
             if (_container != null)
             {
@@ -118,157 +146,97 @@ namespace TalentTree
             }
         }
 
-        private void BuildTrees()
+        private void SpawnTrees()
         {
-            var layouts = CollectLayouts();
-            if (layouts.Count == 0)
+            _treeBuilder ??= new TalentTreeBuilder(
+                _nodePrefab, _treePanelPrefab, _container, _cellSize, _cellSpacing, _nodeTopPadding);
+
+            foreach (var spawnedTree in _treeBuilder.Build(_classData))
             {
-                return;
-            }
+                var tree = spawnedTree.Key;
+                var nodeViews = spawnedTree.Value;
+                _nodesByTree[tree] = nodeViews;
 
-            if (!_container.TryGetComponent<GridLayoutGroup>(out var treesGridLayout))
-            {
-                return;
-            }
-
-            // Nodes render at a fixed, comfortable size; the canvas scaling (Constant Pixel Size)
-            // decides their final on-screen pixels, not any tree-fitting math.
-            float step = _cellSize + _cellSpacing;
-
-            // The GridLayoutGroup needs an explicit cell size, so derive one column from the
-            // container, accounting for the grid's own spacing and padding.
-            float totalColumnSpacing = treesGridLayout.spacing.x * (layouts.Count - 1);
-            float horizontalPadding = treesGridLayout.padding.left + treesGridLayout.padding.right;
-            float verticalPadding = treesGridLayout.padding.top + treesGridLayout.padding.bottom;
-            float columnWidth = (_container.rect.width - totalColumnSpacing - horizontalPadding) / layouts.Count;
-            float columnHeight = _container.rect.height - verticalPadding;
-
-            // Every panel is the same full-column size, so the background (stretched to fill
-            // the panel) lands in the same place for every tree regardless of node count.
-            treesGridLayout.startCorner = GridLayoutGroup.Corner.UpperLeft;
-            treesGridLayout.startAxis = GridLayoutGroup.Axis.Horizontal;
-            treesGridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            treesGridLayout.constraintCount = layouts.Count;
-            treesGridLayout.cellSize = new Vector2(columnWidth, columnHeight);
-
-            foreach (var (tree, nodes) in layouts)
-            {
-                var panel = SpawnPanel(tree);
-
-                // Center the tree horizontally inside its column; node size stays fixed.
-                float contentWidth = nodes.Max(node => node.X) * step + _cellSize;
-                float horizontalOffset = Mathf.Max(0f, (columnWidth - contentWidth) * 0.5f);
-
-                foreach (var nodeData in nodes)
+                foreach (var nodeView in nodeViews)
                 {
-                    SpawnNode(tree, nodeData, panel, step, horizontalOffset);
+                    WireNode(tree, nodeView);
                 }
             }
+        }
 
-            // Newly instantiated panels don't always get picked up by Unity's automatic
-            // layout pass in the same frame, so force it to apply the grid immediately.
-            LayoutRebuilder.ForceRebuildLayoutImmediate(_container);
+        private void WireNode(TalentTreeSO tree, TalentNodeView nodeView)
+        {
+            nodeView.OnInvestRequested += clickedView => HandleInvestRequested(tree, clickedView.AssignedData);
+            nodeView.OnRemoveRequested += clickedView => HandleRemoveRequested(tree, clickedView.AssignedData);
+            nodeView.OnHoverEnter += hoveredView => ShowTooltip(tree, hoveredView);
+            nodeView.OnHoverExit += _ => HideTooltip();
         }
 
         private void BuildTabs()
         {
-            if (_tabPrefab == null || _tabsContainer == null)
-            {
-                return;
-            }
+            _tabBarBuilder ??= new TreeTabBarBuilder(_tabPrefab, _tabsContainer);
 
-            foreach (var tree in _classData.Trees)
-            {
-                if (tree == null)
-                {
-                    continue;
-                }
+            var displayedTrees = _classData.Trees
+                .Where(tree => tree != null && _nodesByTree.ContainsKey(tree));
 
-                var tab = Instantiate(_tabPrefab, _tabsContainer);
-                tab.Initialize(tree);
+            foreach (var spawnedTab in _tabBarBuilder.Build(displayedTrees))
+            {
+                var tab = spawnedTab.Value;
+                _tabsByTree[spawnedTab.Key] = tab;
                 tab.OnCancelClicked += HandleTreeCancelClicked;
-                _tabsByTree[tree] = tab;
             }
         }
 
-        private List<(TalentTreeSO tree, List<TalentNodeData> nodes)> CollectLayouts()
+        // ── Tooltip ───────────────────────────────────────────────────────────────
+
+        private void ShowTooltip(TalentTreeSO tree, TalentNodeView nodeView)
         {
-            var layouts = new List<(TalentTreeSO, List<TalentNodeData>)>();
-            foreach (var tree in _classData.Trees)
-            {
-                if (tree == null || tree.Nodes == null)
-                {
-                    continue;
-                }
-
-                var nodes = tree.Nodes.Where(node => node != null).ToList();
-                if (nodes.Count == 0)
-                {
-                    continue;
-                }
-
-                layouts.Add((tree, nodes));
-            }
-            return layouts;
-        }
-
-        private RectTransform SpawnPanel(TalentTreeSO tree)
-        {
-            RectTransform panelRectTransform;
-            if (_treePanelPrefab != null)
-            {
-                var panelView = Instantiate(_treePanelPrefab, _container);
-                panelView.Initialize(tree.BackgroundPrefab);
-                panelRectTransform = panelView.GetComponent<RectTransform>();
-            }
-            else
-            {
-                panelRectTransform = new GameObject(TreeDisplayName(tree)).AddComponent<RectTransform>();
-                panelRectTransform.SetParent(_container, false);
-            }
-
-            // Anchoring, sizing and position are driven by the GridLayoutGroup on _container.
-            panelRectTransform.name = TreeDisplayName(tree);
-            return panelRectTransform;
-        }
-
-        private static string TreeDisplayName(TalentTreeSO tree)
-        {
-            if (tree.TabDefinition != null && !string.IsNullOrEmpty(tree.TabDefinition.DisplayName))
-            {
-                return tree.TabDefinition.DisplayName;
-            }
-            return tree.name;
-        }
-
-        private void SpawnNode(TalentTreeSO tree, TalentNodeData nodeData, RectTransform parentPanel, float step, float horizontalOffset)
-        {
-            if (nodeData.Definition == null)
+            if (_tooltipBuilder == null || nodeView == null || nodeView.AssignedData == null)
             {
                 return;
             }
 
-            var nodeView = Instantiate(_nodePrefab, parentPanel);
-            nodeView.Initialize(nodeData.Definition);
+            _hoveredTree = tree;
+            _hoveredNode = nodeView;
 
-            nodeView.OnInvestRequested += clickedView => HandleInvestRequested(tree, clickedView.AssignedData);
-            nodeView.OnRemoveRequested += clickedView => HandleRemoveRequested(tree, clickedView.AssignedData);
+            var definition = nodeView.AssignedData;
+            var state = _talentManager.GetDisplayState(tree, definition);
+            string lockReason = BuildLockReason(tree, definition, state);
 
-            var nodeRectTransform = nodeView.GetComponent<RectTransform>();
-            nodeRectTransform.anchorMin = new Vector2(0f, 1f);
-            nodeRectTransform.anchorMax = new Vector2(0f, 1f);
-            nodeRectTransform.pivot = new Vector2(0f, 1f);
-            nodeRectTransform.sizeDelta = new Vector2(_cellSize, _cellSize);
-            nodeRectTransform.anchoredPosition = new Vector2(
-                horizontalOffset + nodeData.X * step,
-                -(nodeData.Y * step) - _nodeTopPadding);
+            _tooltipBuilder.Show(definition, state, lockReason, (RectTransform)nodeView.transform);
+        }
 
-            if (!_nodesByTree.TryGetValue(tree, out var nodeViews))
+        private void HideTooltip()
+        {
+            _hoveredTree = null;
+            _hoveredNode = null;
+            _tooltipBuilder?.Hide();
+        }
+
+        private void RefreshTooltip()
+        {
+            if (_hoveredNode != null)
             {
-                nodeViews = new List<TalentNodeView>();
-                _nodesByTree[tree] = nodeViews;
+                ShowTooltip(_hoveredTree, _hoveredNode);
             }
-            nodeViews.Add(nodeView);
+        }
+
+        private string BuildLockReason(TalentTreeSO tree, TalentDefinitionSO definition, TalentDisplayState state)
+        {
+            switch (state.LockReason)
+            {
+                case TalentLockReason.NotEnoughTreePoints:
+                    {
+                        return $"Requires {definition.RequiredTreePoints} points in {TalentTreeBuilder.DisplayName(tree)}";
+                    }
+                case TalentLockReason.PrerequisiteNotMaxed:
+                    {
+                        var prerequisite = state.BlockingPrerequisite;
+                        return $"Requires {prerequisite.MaxRank} point(s) in {prerequisite.DisplayName}";
+                    }
+                default:
+                    return null;
+            }
         }
 
         // ── Talent logic ──────────────────────────────────────────────────────────
@@ -333,6 +301,8 @@ namespace TalentTree
             {
                 RefreshTree(tree);
             }
+
+            RefreshTooltip();
         }
 
         private void RefreshHeader()
@@ -340,14 +310,14 @@ namespace TalentTree
             if (_classHeaderText != null)
             {
                 var pointsPerTree = _classData.Trees
-                    .Where(tree => tree != null)
+                    .Where(tree => tree != null && _nodesByTree.ContainsKey(tree))
                     .Select(tree => _talentManager.GetPointsInTree(tree).ToString());
                 _classHeaderText.text = $"{_classData.CharacterName} ({string.Join("/", pointsPerTree)})";
             }
 
             if (_pointsLeftText != null)
             {
-                _pointsLeftText.text = $"Points left: {_talentManager.AvailablePoints}";
+                _pointsLeftText.text = string.Format(PointsLeftFormat, _talentManager.AvailablePoints);
             }
         }
 

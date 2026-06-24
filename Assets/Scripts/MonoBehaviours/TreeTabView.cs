@@ -12,6 +12,8 @@ namespace TalentTree
         [SerializeField] private TextMeshProUGUI _pointsText;
         [SerializeField] private Button _cancelButton;
 
+        private const string PointsFormat = "({0})";
+
         public event Action<TalentTreeSO> OnCancelClicked;
 
         public TalentTreeSO Tree { get; private set; }
@@ -47,7 +49,7 @@ namespace TalentTree
         {
             if (_pointsText != null)
             {
-                _pointsText.text = $"({points})";
+                _pointsText.text = string.Format(PointsFormat, points);
             }
         }
 

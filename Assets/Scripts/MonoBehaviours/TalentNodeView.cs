@@ -10,11 +10,14 @@ namespace TalentTree
     {
         [Header("UI Links")]
         [SerializeField] private Image _iconImage;
-        [SerializeField] private TextMeshProUGUI _rankText;
         [SerializeField] private Button _button;
         [SerializeField] private Image _grayScaleOverlay;
         [SerializeField] private Image _frame;
         [SerializeField] private Image _hoverOverlay;
+
+        [Header("Badge UI")]
+        [SerializeField] private GameObject _badgeContainer;
+        [SerializeField] private TextMeshProUGUI _rankText;
 
         [Header("Frame Colors")]
         [SerializeField] private Color _availableColor = Color.green;
@@ -29,6 +32,17 @@ namespace TalentTree
 
         public event Action<TalentNodeView> OnInvestRequested;
         public event Action<TalentNodeView> OnRemoveRequested;
+        public event Action<TalentNodeView> OnHoverEnter;
+        public event Action<TalentNodeView> OnHoverExit;
+
+        private void Awake()
+        {
+            if (_iconImage == null || _button == null || _grayScaleOverlay == null || _frame == null
+                || _hoverOverlay == null || _badgeContainer == null || _rankText == null)
+            {
+                Debug.LogError($"{nameof(TalentNodeView)} is missing a serialized UI reference.", this);
+            }
+        }
 
         public void Initialize(TalentDefinitionSO talentDef)
         {
@@ -41,39 +55,30 @@ namespace TalentTree
             _assignedData = talentDef;
             _talentId = talentDef.Id;
 
-            if (_iconImage != null)
-            {
-                _iconImage.sprite = talentDef.Icon;
-            }
-            if (_hoverOverlay != null)
-            {
-                _hoverOverlay.enabled = false;
-            }
+            _iconImage.sprite = talentDef.Icon;
+            _hoverOverlay.enabled = false;
         }
 
         public void UpdateState(TalentDisplayState state)
         {
             bool isMaxed = state.Rank >= state.MaxRank;
             bool isLocked = !state.RequirementsMet && !isMaxed;
+            Color frameColor = isMaxed ? _maxedColor : (isLocked ? _lockedColor : _availableColor);
 
-            if (_rankText != null)
-            {
-                _rankText.text = $"{state.Rank}/{state.MaxRank}";
-                _rankText.color = isLocked ? new Color(1f, 1f, 1f, 0.4f) : Color.white;
-            }
+            _button.interactable = state.CanInvest;
+            _grayScaleOverlay.enabled = isLocked;
+            _frame.color = frameColor;
 
-            if (_button != null)
-            {
-                _button.interactable = state.CanInvest;
-            }
-            if (_grayScaleOverlay != null)
-            {
-                _grayScaleOverlay.enabled = isLocked;
-            }
+            UpdateRankBadge(state, isLocked, frameColor);
+        }
 
-            if (_frame != null)
+        private void UpdateRankBadge(TalentDisplayState state, bool isLocked, Color frameColor)
+        {
+            _badgeContainer.SetActive(!isLocked);
+            if (!isLocked)
             {
-                _frame.color = isMaxed ? _maxedColor : (isLocked ? _lockedColor : _availableColor);
+                _rankText.text = state.Rank.ToString();
+                _rankText.color = frameColor;
             }
         }
 
@@ -96,18 +101,14 @@ namespace TalentTree
 
         public void OnPointerEnter(PointerEventData eventData)
         {
-            if (_hoverOverlay != null)
-            {
-                _hoverOverlay.enabled = true;
-            }
+            _hoverOverlay.enabled = true;
+            OnHoverEnter?.Invoke(this);
         }
 
         public void OnPointerExit(PointerEventData eventData)
         {
-            if (_hoverOverlay != null)
-            {
-                _hoverOverlay.enabled = false;
-            }
+            _hoverOverlay.enabled = false;
+            OnHoverExit?.Invoke(this);
         }
     }
 }

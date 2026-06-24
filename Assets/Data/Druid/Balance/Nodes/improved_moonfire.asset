@@ -15,8 +15,9 @@ MonoBehaviour:
   Id: improved_moonfire
   DisplayName: Improved Moonfire
   Icon: {fileID: 21300000, guid: a4dd9d1c7d1af1e43a62c5eb226db1ab, type: 3}
-  Description: 
-  MaxRank: 5
-  TreeId: Balance
+  Description:
   RequiredTreePoints: 0
-  RequiredTalent: {fileID: 0}
+  RankDescriptions:
+  - Increases the damage and critical strike chance of your Moonfire spell by 2%.
+  - Increases the damage and critical strike chance of your Moonfire spell by 4%.
+  RequiredTalents: []

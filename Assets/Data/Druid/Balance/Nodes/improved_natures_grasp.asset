@@ -15,8 +15,9 @@ MonoBehaviour:
   Id: improved_natures_grasp
   DisplayName: Improved Nature's Grasp
   Icon: {fileID: 21300000, guid: 6bc179c170b47b6479e487f4a4971fdd, type: 3}
-  Description: 
-  MaxRank: 4
-  TreeId: Balance
+  Description:
   RequiredTreePoints: 0
-  RequiredTalent: {fileID: 11400000, guid: f98eb08dd7e55a246b54d3209ecdaaa9, type: 2}
+  RankDescriptions:
+  - Increases the chance for your Nature's Grasp to entangle an enemy to 100%.
+  RequiredTalents:
+  - {fileID: 11400000, guid: f98eb08dd7e55a246b54d3209ecdaaa9, type: 2}

@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
+using UnityEngine.Scripting;
 
 namespace TalentTree
 {
@@ -12,16 +14,32 @@ namespace TalentTree
         public Sprite Icon;
         public string Description;
 
-        [Header("Update rules")]
-        [Min(1)] public int MaxRank = 1;
-
         [Header("Requirements")]
         [Tooltip("Required points in the tree before this talent can be learned")]
         public int RequiredTreePoints;
 
+        [Header("Descriptions")]
+        [Tooltip("Each line is a description for a new rank. The number of lines equals the maximum talent rank.")]
+        [TextArea(2, 4)]
+        [RequiredMember]
+        public string[] RankDescriptions;
+
         [Header("Talent dependency")]
         [Tooltip("Every listed talent must be fully maxed before this talent can be learned")]
         public List<TalentDefinitionSO> RequiredTalents = new();
+
+        public int MaxRank
+        {
+            get
+            {
+                if (RankDescriptions == null || RankDescriptions.Length == 0)
+                {
+                    return 1;
+                }
+
+                return RankDescriptions.Length;
+            }
+        }
 
         private void OnValidate()
         {

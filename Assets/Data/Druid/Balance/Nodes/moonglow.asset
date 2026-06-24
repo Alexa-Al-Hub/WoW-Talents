@@ -15,8 +15,10 @@ MonoBehaviour:
   Id: moonglow
   DisplayName: Moonglow
   Icon: {fileID: 21300000, guid: a71e4ad8ed88de54ab8daa54672f268a, type: 3}
-  Description: 
-  MaxRank: 3
-  TreeId: Balance
-  RequiredTreePoints: 3
-  RequiredTalent: {fileID: 0}
+  Description:
+  RequiredTreePoints: 5
+  RankDescriptions:
+  - Reduces the Mana cost of your damage and healing spells by 3%.
+  - Reduces the Mana cost of your damage and healing spells by 6%.
+  - Reduces the Mana cost of your damage and healing spells by 9%.
+  RequiredTalents: []

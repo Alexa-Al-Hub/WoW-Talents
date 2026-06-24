@@ -1097,6 +1097,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TalentTreePresenter
   _classData: {fileID: 11400000, guid: 4761a77cdd06ab44390bed65be886571, type: 2}
+  _totalTalentPoints: 51
   _nodePrefab: {fileID: 1605897483403279424, guid: 3d1287e3be9972140b1cab8af9d38e2f, type: 3}
   _treePanelPrefab: {fileID: 2009452124786288094, guid: e9aaa50d7c9115f4ebe0008f668a4025, type: 3}
   _container: {fileID: 515418647}
@@ -1104,6 +1105,7 @@ MonoBehaviour:
   _pointsLeftText: {fileID: 1100021047}
   _tabPrefab: {fileID: 5285973476559492584, guid: 10b766f7cd00be54ca9837ad79374976, type: 3}
   _tabsContainer: {fileID: 1309990479}
+  _tooltipPrefab: {fileID: 7924518590485503466, guid: d28213a8b8258374cb814c52dce3523e, type: 3}
   _cellSize: 100
   _cellSpacing: 30
   _nodeTopPadding: 10
