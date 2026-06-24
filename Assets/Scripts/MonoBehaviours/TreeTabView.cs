@@ -15,12 +15,12 @@ namespace TalentTree
         public event Action<TalentTreeSO> OnCancelClicked;
 
         public TalentTreeSO Tree { get; private set; }
-        public TabDefenitionSO TabData { get; private set; }
+        public TabDefinitionSO TabData { get; private set; }
 
-        public void Initialize(TalentTreeSO tree, TabDefenitionSO tabDefenition)
+        public void Initialize(TalentTreeSO tree)
         {
             Tree = tree;
-            TabData = tabDefenition;
+            TabData = tree != null ? tree.TabDefinition : null;
             UpdatePoints(0);
 
             if (_cancelButton != null)
@@ -29,17 +29,17 @@ namespace TalentTree
                 _cancelButton.onClick.AddListener(RaiseCancelClicked);
             }
 
-            if (tabDefenition == null)
+            if (TabData == null)
             {
                 return;
             }
             if (_specIcon != null)
             {
-                _specIcon.sprite = tabDefenition.Icon;
+                _specIcon.sprite = TabData.Icon;
             }
             if (_treeNameText != null)
             {
-                _treeNameText.text = tabDefenition.DisplayName;
+                _treeNameText.text = TabData.DisplayName;
             }
         }
 

@@ -5,29 +5,52 @@ namespace TalentTree
 {
     public class PlayerTalentManager
     {
-        public int AvailablePoints { get; private set; }
-
-        private readonly Dictionary<string, int> _investedTalents = new();
-        private readonly Dictionary<TalentTreeSO, int> _pointsPerTree = new();
+        private readonly int _totalTalentPoints;
+        private readonly Dictionary<TalentDefinitionSO, int> _ranksByTalent = new();
 
         public PlayerTalentManager(int startingPoints)
         {
-            AvailablePoints = startingPoints;
+            _totalTalentPoints = startingPoints;
         }
 
-        public int GetTalentRank(string talentId)
+        public int AvailablePoints => _totalTalentPoints - SpentPoints();
+
+        private int SpentPoints()
         {
-            return _investedTalents.TryGetValue(talentId, out int rank) ? rank : 0;
+            int spent = 0;
+            foreach (int rank in _ranksByTalent.Values)
+            {
+                spent += rank;
+            }
+            return spent;
         }
 
-        public int GetPointsInTree(TalentTreeSO tree)
+        public int GetTalentRank(TalentDefinitionSO talent)
         {
-            if (tree == null)
+            if (talent == null)
             {
                 return 0;
             }
 
-            return _pointsPerTree.TryGetValue(tree, out int points) ? points : 0;
+            return _ranksByTalent.TryGetValue(talent, out int rank) ? rank : 0;
+        }
+
+        public int GetPointsInTree(TalentTreeSO tree)
+        {
+            if (tree?.Nodes == null)
+            {
+                return 0;
+            }
+
+            int points = 0;
+            foreach (var node in tree.Nodes)
+            {
+                if (node?.Definition != null)
+                {
+                    points += GetTalentRank(node.Definition);
+                }
+            }
+            return points;
         }
 
         public bool AreRequirementsMet(TalentTreeSO tree, TalentDefinitionSO talentDef)
@@ -47,12 +70,21 @@ namespace TalentTree
                 return false;
             }
 
-            if (GetTalentRank(talentDef.Id) >= talentDef.MaxRank)
+            if (GetTalentRank(talentDef) >= talentDef.MaxRank)
             {
                 return false;
             }
 
             return AreRequirementsMet(tree, talentDef);
+        }
+
+        public TalentDisplayState GetDisplayState(TalentTreeSO tree, TalentDefinitionSO talentDef)
+        {
+            int rank = GetTalentRank(talentDef);
+            bool requirementsMet = AreRequirementsMet(tree, talentDef);
+            bool canInvest = requirementsMet && rank < talentDef.MaxRank && AvailablePoints > 0;
+
+            return new TalentDisplayState(rank, talentDef.MaxRank, requirementsMet, canInvest);
         }
 
         public bool TryInvestPoint(TalentTreeSO tree, TalentDefinitionSO talentDef)
@@ -63,21 +95,13 @@ namespace TalentTree
                 return false;
             }
 
-            AvailablePoints--;
-            _investedTalents[talentDef.Id] = GetTalentRank(talentDef.Id) + 1;
-
-            if (tree != null)
-            {
-                _pointsPerTree[tree] = GetPointsInTree(tree) + 1;
-
-            }
-
+            _ranksByTalent[talentDef] = GetTalentRank(talentDef) + 1;
             return true;
         }
 
         public bool TryRemovePoint(TalentTreeSO tree, TalentDefinitionSO talentDef)
         {
-            int currentRank = GetTalentRank(talentDef.Id);
+            int currentRank = GetTalentRank(talentDef);
             if (currentRank <= 0)
             {
                 return false;
@@ -92,18 +116,11 @@ namespace TalentTree
             int newRank = currentRank - 1;
             if (newRank == 0)
             {
-                _investedTalents.Remove(talentDef.Id);
+                _ranksByTalent.Remove(talentDef);
             }
             else
             {
-                _investedTalents[talentDef.Id] = newRank;
-            }
-
-            AvailablePoints++;
-
-            if (tree != null)
-            {
-                _pointsPerTree[tree] = Mathf.Max(0, GetPointsInTree(tree) - 1);
+                _ranksByTalent[talentDef] = newRank;
             }
 
             return true;
@@ -123,13 +140,10 @@ namespace TalentTree
                 {
                     if (node?.Definition != null)
                     {
-                        _investedTalents.Remove(node.Definition.Id);
+                        _ranksByTalent.Remove(node.Definition);
                     }
                 }
             }
-
-            _pointsPerTree[tree] = 0;
-            AvailablePoints += refundedPoints;
 
             return refundedPoints;
         }
@@ -148,7 +162,7 @@ namespace TalentTree
                     continue;
                 }
 
-                if (GetTalentRank(requiredTalent.Id) < requiredTalent.MaxRank)
+                if (GetTalentRank(requiredTalent) < requiredTalent.MaxRank)
                 {
                     return false;
                 }
@@ -164,6 +178,8 @@ namespace TalentTree
                 return false;
             }
 
+            int treePointsAfterRemoval = GetPointsInTree(tree) - 1;
+
             foreach (var node in tree.Nodes)
             {
                 var dependentTalent = node?.Definition;
@@ -176,8 +192,7 @@ namespace TalentTree
                     continue;
                 }
 
-                if (dependentTalent.RequiredTreePoints > 0 &&
-                    SupportingPointsAfterRemoval(tree, dependentTalent, removedTalent) < dependentTalent.RequiredTreePoints)
+                if (treePointsAfterRemoval < dependentTalent.RequiredTreePoints)
                 {
                     return true;
                 }
@@ -202,32 +217,11 @@ namespace TalentTree
             return false;
         }
 
-        private int SupportingPointsAfterRemoval(TalentTreeSO tree, TalentDefinitionSO dependentTalent, TalentDefinitionSO removedTalent)
-        {
-            int supportingPoints = 0;
-            foreach (var node in tree.Nodes)
-            {
-                var lowerTalent = node?.Definition;
-                if (lowerTalent == null)
-                {
-                    continue;
-                }
-
-                if (lowerTalent.RequiredTreePoints >= dependentTalent.RequiredTreePoints)
-                {
-                    continue;
-                }
-
-                supportingPoints += RankAfterRemoval(lowerTalent, removedTalent);
-            }
-            return supportingPoints;
-        }
-
         private int RankAfterRemoval(TalentDefinitionSO talent, TalentDefinitionSO removedTalent)
         {
-            int rank = GetTalentRank(talent.Id);
+            int rank = GetTalentRank(talent);
 
-            return talent.Id == removedTalent.Id ? rank - 1 : rank;
+            return talent == removedTalent ? rank - 1 : rank;
         }
     }
 }

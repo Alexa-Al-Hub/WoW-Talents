@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -36,19 +35,23 @@ namespace TalentTree
         private PlayerTalentManager _talentManager;
         private readonly Dictionary<TalentTreeSO, List<TalentNodeView>> _nodesByTree = new();
         private readonly Dictionary<TalentTreeSO, TreeTabView> _tabsByTree = new();
-        private readonly List<GameObject> _spawnedPanels = new();
+        private readonly Dictionary<CharacterSO, PlayerTalentManager> _managersByCharacter = new();
 
-        private void OnEnable() => StartCoroutine(BuildAfterLayout());
+        private void OnEnable() => Build();
         private void OnDisable() => ClearSpawned();
 
-        private IEnumerator BuildAfterLayout()
+        public void SetCharacter(CharacterSO character)
         {
-            yield return null;
-            yield return null;
-            var rootCanvasRectTransform = _container.GetComponentInParent<Canvas>().rootCanvas.transform as RectTransform;
-            LayoutRebuilder.ForceRebuildLayoutImmediate(rootCanvasRectTransform);
-            Canvas.ForceUpdateCanvases();
-            Build();
+            if (character == null || character == _classData)
+            {
+                return;
+            }
+
+            _classData = character;
+            if (isActiveAndEnabled)
+            {
+                Build();
+            }
         }
 
         // ── Build ─────────────────────────────────────────────────────────────────
@@ -62,9 +65,20 @@ namespace TalentTree
                 return;
             }
 
-            _talentManager = new PlayerTalentManager(_totalTalentPoints);
+            var parentCanvas = _container.GetComponentInParent<Canvas>();
+            if (parentCanvas == null)
+            {
+                Debug.LogError($"{nameof(TalentTreePresenter)}: container is not under a Canvas.", this);
+                return;
+            }
 
-            // Keep the trees container behind its siblings (Header, Tabs) so backgrounds render behind everything.
+            Canvas.ForceUpdateCanvases();
+            if (parentCanvas.rootCanvas.transform is RectTransform rootCanvasRectTransform)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rootCanvasRectTransform);
+            }
+
+            _talentManager = GetOrCreateManager(_classData);
             _container.SetAsFirstSibling();
 
             BuildTrees();
@@ -72,11 +86,20 @@ namespace TalentTree
             RefreshAllNodes();
         }
 
+        private PlayerTalentManager GetOrCreateManager(CharacterSO character)
+        {
+            if (!_managersByCharacter.TryGetValue(character, out var manager))
+            {
+                manager = new PlayerTalentManager(_totalTalentPoints);
+                _managersByCharacter[character] = manager;
+            }
+            return manager;
+        }
+
         private void ClearSpawned()
         {
             _nodesByTree.Clear();
             _tabsByTree.Clear();
-            _spawnedPanels.Clear();
 
             if (_container != null)
             {
@@ -162,7 +185,7 @@ namespace TalentTree
                 }
 
                 var tab = Instantiate(_tabPrefab, _tabsContainer);
-                tab.Initialize(tree, tree.TabDefinition);
+                tab.Initialize(tree);
                 tab.OnCancelClicked += HandleTreeCancelClicked;
                 _tabsByTree[tree] = tab;
             }
@@ -200,14 +223,22 @@ namespace TalentTree
             }
             else
             {
-                panelRectTransform = new GameObject(tree.TreeName).AddComponent<RectTransform>();
+                panelRectTransform = new GameObject(TreeDisplayName(tree)).AddComponent<RectTransform>();
                 panelRectTransform.SetParent(_container, false);
             }
 
             // Anchoring, sizing and position are driven by the GridLayoutGroup on _container.
-            panelRectTransform.name = tree.TreeName;
-            _spawnedPanels.Add(panelRectTransform.gameObject);
+            panelRectTransform.name = TreeDisplayName(tree);
             return panelRectTransform;
+        }
+
+        private static string TreeDisplayName(TalentTreeSO tree)
+        {
+            if (tree.TabDefinition != null && !string.IsNullOrEmpty(tree.TabDefinition.DisplayName))
+            {
+                return tree.TabDefinition.DisplayName;
+            }
+            return tree.name;
         }
 
         private void SpawnNode(TalentTreeSO tree, TalentNodeData nodeData, RectTransform parentPanel, float step, float horizontalOffset)
@@ -287,10 +318,7 @@ namespace TalentTree
                     continue;
                 }
 
-                int rank = _talentManager.GetTalentRank(definition.Id);
-                bool canInvest = _talentManager.CanInvestInTalent(tree, definition);
-                bool requirementsMet = _talentManager.AreRequirementsMet(tree, definition);
-                nodeView.UpdateState(rank, definition.MaxRank, canInvest, requirementsMet);
+                nodeView.UpdateState(_talentManager.GetDisplayState(tree, definition));
             }
         }
 

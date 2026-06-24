@@ -51,20 +51,20 @@ namespace TalentTree
             }
         }
 
-        public void UpdateState(int currentRank, int maxRank, bool canInvest, bool requirementsMet)
+        public void UpdateState(TalentDisplayState state)
         {
-            bool isMaxed = currentRank >= maxRank;
-            bool isLocked = !requirementsMet && !isMaxed;
+            bool isMaxed = state.Rank >= state.MaxRank;
+            bool isLocked = !state.RequirementsMet && !isMaxed;
 
             if (_rankText != null)
             {
-                _rankText.text = $"{currentRank}/{maxRank}";
+                _rankText.text = $"{state.Rank}/{state.MaxRank}";
                 _rankText.color = isLocked ? new Color(1f, 1f, 1f, 0.4f) : Color.white;
             }
 
             if (_button != null)
             {
-                _button.interactable = canInvest;
+                _button.interactable = state.CanInvest;
             }
             if (_grayScaleOverlay != null)
             {

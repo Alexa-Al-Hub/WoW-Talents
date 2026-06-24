@@ -16,12 +16,13 @@ namespace TalentTree
         private bool _snapToGrid = true;
         private Vector2 _sidebarScroll;
 
-        // Must match TalentTreePresenter serialized fields
+        private string _validationMessage;
+        private MessageType _validationStatus = MessageType.None;
+
         private const float RuntimeCellSize = 64f;
         private const float RuntimeSpacing = 10f;
         private const float RuntimeStep = RuntimeCellSize + RuntimeSpacing;
 
-        // Grid extent of the tree. WoW Classic trees are 4 columns wide; rows vary by tree.
         private int _columns = 4;
         private int _rows = 7;
 
@@ -68,6 +69,8 @@ namespace TalentTree
         {
             _tree = tree;
             _selectedNodeIndex = -1;
+            _validationMessage = null;
+            _validationStatus = MessageType.None;
             Repaint();
         }
 
@@ -103,9 +106,15 @@ namespace TalentTree
         {
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             {
-                GUILayout.Label(_tree != null ? _tree.TreeName : "—", EditorStyles.boldLabel);
+                GUILayout.Label(_tree != null ? _tree.name : "—", EditorStyles.boldLabel);
                 GUILayout.FlexibleSpace();
                 _snapToGrid = GUILayout.Toggle(_snapToGrid, "Snap", EditorStyles.toolbarButton, GUILayout.Width(56));
+                GUI.enabled = _tree != null;
+                if (GUILayout.Button("Validate", EditorStyles.toolbarButton))
+                {
+                    ValidateTree();
+                }
+                GUI.enabled = true;
                 if (GUILayout.Button("Add Node", EditorStyles.toolbarButton))
                 {
                     AddNode();
@@ -333,6 +342,12 @@ namespace TalentTree
             DrawTreeLoader();
             EditorGUILayout.Space(10);
 
+            if (!string.IsNullOrEmpty(_validationMessage))
+            {
+                EditorGUILayout.HelpBox(_validationMessage, _validationStatus);
+                EditorGUILayout.Space(8);
+            }
+
             EditorGUILayout.LabelField("Grid", EditorStyles.boldLabel);
             _columns = Mathf.Max(1, EditorGUILayout.IntField("Columns", _columns));
             _rows = Mathf.Max(1, EditorGUILayout.IntField("Rows", _rows));
@@ -410,6 +425,47 @@ namespace TalentTree
             _tree.Nodes.Add(new TalentNodeData());
             EditorUtility.SetDirty(_tree);
             _selectedNodeIndex = _tree.Nodes.Count - 1;
+            Repaint();
+        }
+
+        private void ValidateTree()
+        {
+            if (_tree?.Nodes == null)
+            {
+                _validationMessage = "Tree has no nodes to validate.";
+                _validationStatus = MessageType.Warning;
+                Repaint();
+                return;
+            }
+
+            var checkedDefinitions = new HashSet<TalentDefinitionSO>();
+            var talentsWithCycles = new List<string>();
+
+            foreach (var node in _tree.Nodes)
+            {
+                var definition = node?.Definition;
+                if (definition == null || !checkedDefinitions.Add(definition))
+                {
+                    continue;
+                }
+
+                if (TalentDependencyValidator.HasCircularDependency(definition))
+                {
+                    talentsWithCycles.Add(definition.name);
+                }
+            }
+
+            if (talentsWithCycles.Count == 0)
+            {
+                _validationMessage = "No circular dependencies found.";
+                _validationStatus = MessageType.Info;
+            }
+            else
+            {
+                _validationMessage = "Circular dependencies found in:\n• " + string.Join("\n• ", talentsWithCycles);
+                _validationStatus = MessageType.Error;
+            }
+
             Repaint();
         }
 

@@ -2,8 +2,8 @@ using UnityEngine;
 
 namespace TalentTree
 {
-    [CreateAssetMenu(fileName = "TabDefenitionSO", menuName = "Scriptable Objects/TabDefenition")]
-    public class TabDefenitionSO : ScriptableObject
+    [CreateAssetMenu(fileName = "TabDefinitionSO", menuName = "Scriptable Objects/TabDefinition")]
+    public class TabDefinitionSO : ScriptableObject
     {
         [Header("Tab data")]
         public string DisplayName;
